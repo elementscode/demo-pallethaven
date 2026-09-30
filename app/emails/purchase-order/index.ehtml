@@ -1,0 +1,55 @@
+import "./style.css";
+import { formatMoney } from "#app/shared/services/inventory";
+import { PurchaseOrderSummary, poNumber } from "#app/shared/services/purchasing";
+
+/**
+ * The order a supplier receives when a manager sends a purchase order.
+ *
+ * @email
+ */
+<html (order: PurchaseOrderSummary)>
+  <body class="email purchase-order">
+    <div class="email-wrap">
+      <p class="po-eyebrow">Purchase order {poNumber(order.number)}</p>
+      <h1>Order from Pallethaven</h1>
+      <p>Hello {order.supplierContact || order.supplierName},</p>
+      <p>
+        Please supply the items below. Reply to this email to confirm the
+        order and a delivery date.
+      </p>
+
+      <table class="po-lines" role="presentation" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Item</th>
+            <th class="num">Qty</th>
+            <th class="num">Unit</th>
+            <th class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr e:for={line of order.lines}>
+            <td class="sku">{line.sku}</td>
+            <td>{line.name}</td>
+            <td class="num">{line.quantityOrdered}</td>
+            <td class="num">{formatMoney(line.unitCostCents)}</td>
+            <td class="num">{formatMoney(line.quantityOrdered * line.unitCostCents)}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4">Order total</td>
+            <td class="num">{formatMoney(order.totalCents)}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <p>Thank you,<br>{order.createdByName}<br>Pallethaven</p>
+
+      <div class="email-footer">
+        <p>Pallethaven purchasing · {poNumber(order.number)} · {order.lines.length} lines</p>
+      </div>
+    </div>
+  </body>
+</html>

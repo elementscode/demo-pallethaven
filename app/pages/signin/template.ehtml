@@ -1,0 +1,115 @@
+import "./style.css";
+import { redirect } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { signin } from "#app/shared/services/auth";
+
+export interface DemoLogin {
+  name: string;
+  role: string;
+  email: string;
+  password: string;
+}
+
+interface SigninForm {
+  email: string;
+  password: string;
+  error: string;
+  busy: boolean;
+}
+
+function onSubmit(form: SigninForm) {
+  form.busy = true;
+
+  try {
+    signin(form.email, form.password);
+    form.error = "";
+    redirect("/");
+  } catch (err: any) {
+    form.error = err.message;
+    form.busy = false;
+  }
+}
+
+function onUseLogin(form: SigninForm, login: DemoLogin) {
+  form.email = login.email;
+  form.password = login.password;
+  onSubmit(form);
+}
+
+<html lang="en" class="page-signin" (
+  demoLogins: DemoLogin[],
+  private form: SigninForm = { email: "", password: "", error: "", busy: false },
+)>
+  <head>
+    <title>Sign in · Pallethaven</title>
+    <meta name="description" content="Pallethaven inventory and purchasing">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <main class="signin-main center">
+      <div class="signin-column stack is-lg">
+        <div class="stack is-sm">
+          <div class="signin-brand row">
+            <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="11" rx="1.5" fill="currentColor"/>
+              <rect x="2" y="15.5" width="20" height="2" rx="0.8" fill="currentColor"/>
+              <rect x="3" y="17.5" width="3" height="3" fill="currentColor"/>
+              <rect x="10.5" y="17.5" width="3" height="3" fill="currentColor"/>
+              <rect x="18" y="17.5" width="3" height="3" fill="currentColor"/>
+            </svg>
+            <h1>Pallethaven</h1>
+          </div>
+          <p class="signin-tagline">Stock, suppliers and purchase orders for the warehouse.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <form class="stack" onsubmit={() => onSubmit(form)}>
+              <p e:if={form.error} class="error" role="alert">{form.error}</p>
+
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email"
+                       name="email"
+                       type="email"
+                       value={form.email}
+                       autocomplete="email"
+                       autocapitalize="none"
+                       spellcheck={false}
+                       placeholder="you@pallethaven.shop"
+                       required>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password"
+                       name="password"
+                       type="password"
+                       value={form.password}
+                       autocomplete="current-password"
+                       required>
+              </div>
+
+              <button type="submit" class="is-primary is-block" disabled={form.busy}>
+                {form.busy ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div e:if={demoLogins.length > 0} class="card demo-logins">
+          <div class="card-head">
+            <h2>Demo logins <span class="pill is-sm">seeded</span></h2>
+          </div>
+          <div class="card-body stack">
+            <div e:for={login of demoLogins} class="demo-login">
+              <span class="demo-login-name">{login.name} · {login.role}</span>
+              <span class="demo-login-meta">{login.email} / {login.password}</span>
+              <button class="is-sm" onclick={() => onUseLogin(form, login)}>Sign in</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

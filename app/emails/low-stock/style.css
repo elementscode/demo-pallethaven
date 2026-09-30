@@ -1,0 +1,38 @@
+@import "#app/shared/styles/email.css";
+
+.email.low-stock .low-lines {
+  width: 100%;
+  margin: 20px 0 24px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.email.low-stock .low-lines th {
+  padding: 8px 6px;
+  border-bottom: 2px solid #1f2933;
+  text-align: left;
+  font-size: 12px;
+  color: #52606d;
+}
+
+.email.low-stock .low-lines td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #e4e7eb;
+  vertical-align: top;
+}
+
+.email.low-stock .low-lines .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.email.low-stock .low-lines .sku {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.email.low-stock .low-lines .out {
+  font-weight: 700;
+  color: #b42318;
+}

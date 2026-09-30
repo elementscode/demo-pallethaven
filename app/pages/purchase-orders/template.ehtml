@@ -1,0 +1,165 @@
+import "./style.css";
+import { LiveView, redirect, session } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { formatDay } from "#app/shared/lib/format";
+import { Product, formatMoney, isLow } from "#app/shared/services/inventory";
+import {
+  PoStatus,
+  PurchaseOrder,
+  STATUS_LABELS,
+  createPurchaseOrder,
+  poNumber,
+  statusIntent,
+} from "#app/shared/services/purchasing";
+
+export interface SupplierOption {
+  id: string;
+  name: string;
+}
+
+type Filter = PoStatus | "all";
+
+interface ListState {
+  filter: Filter;
+}
+
+interface NewOrder {
+  supplierId: string;
+  error: string;
+  busy: boolean;
+}
+
+const FILTERS: Filter[] = ["all", "draft", "sent", "partially_received", "received"];
+
+function filterLabel(filter: Filter): string {
+  return filter === "all" ? "All" : STATUS_LABELS[filter];
+}
+
+function countFor(orders: LiveView<PurchaseOrder>, filter: Filter): number {
+  return orders.filter((o) => filter === "all" || o.status === filter).length;
+}
+
+function visible(orders: LiveView<PurchaseOrder>, filter: Filter): PurchaseOrder[] {
+  return orders
+    .filter((o) => filter === "all" || o.status === filter)
+    .sort((a, b) => b.number - a.number);
+}
+
+function lowCount(products: LiveView<Product>, supplierId: string): number {
+  return products.filter((p) => p.supplierId === supplierId && isLow(p)).length;
+}
+
+function receivedPercent(o: PurchaseOrder): number {
+  return o.unitsOrdered === 0 ? 0 : Math.round((o.unitsReceived / o.unitsOrdered) * 100);
+}
+
+function onCreate(form: NewOrder) {
+  form.busy = true;
+
+  try {
+    let id = createPurchaseOrder(form.supplierId);
+    redirect(`/purchase-orders/${id}`);
+  } catch (err: any) {
+    form.error = err.message;
+    form.busy = false;
+  }
+}
+
+<html lang="en" class="page-purchase-orders" (
+  orders: LiveView<PurchaseOrder>,
+  products: LiveView<Product>,
+  suppliers: SupplierOption[],
+  private state: ListState = { filter: "all" as Filter },
+  private form: NewOrder = { supplierId: suppliers[0]?.id ?? "", error: "", busy: false },
+)>
+  <head>
+    <title>Purchase orders · Pallethaven</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout active="orders">
+      <div class="stack is-xl">
+        <div class="page-head">
+          <div>
+            <h1>Purchase orders</h1>
+            <p class="page-sub">Draft from low stock, send to the supplier, receive line by line.</p>
+          </div>
+
+          <form e:if={session.get("role") === "manager"} class="new-po row" onsubmit={() => onCreate(form)}>
+            <select value={form.supplierId} aria-label="Supplier for the new order">
+              <option e:for={s of suppliers} value={s.id}>
+                {s.name} ({lowCount(products, s.id)} low)
+              </option>
+            </select>
+            <button type="submit" class="is-primary" disabled={form.busy}>New order</button>
+          </form>
+        </div>
+
+        <p e:if={form.error} class="error" role="alert">{form.error}</p>
+
+        <div class="stack is-md">
+          <div class="toolbar">
+            <div class="tab-list" role="tablist">
+              <button e:for={f of FILTERS}
+                      role="tab"
+                      class={["tab", state.filter === f && "is-active"]}
+                      onclick={() => state.filter = f}>
+                {filterLabel(f)}<span class="tab-count">{countFor(orders, f)}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table po-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th class="col-supplier">Supplier</th>
+                  <th>Status</th>
+                  <th class="num col-lines">Lines</th>
+                  <th class="num">Total</th>
+                  <th class="progress-cell">Received</th>
+                  <th class="col-created">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr e:for={o of visible(orders, state.filter)}>
+                  <td>
+                    <a class="row-link po-number" href={`/purchase-orders/${o.id}`}>{poNumber(o.number)}</a>
+                    <div class="po-supplier-sub">{o.supplierName}</div>
+                  </td>
+                  <td class="col-supplier">{o.supplierName}</td>
+                  <td>
+                    <span class={["pill", "status-pill", statusIntent(o.status)]}>
+                      <span class="pill-dot"></span>
+                      {STATUS_LABELS[o.status]}
+                    </span>
+                  </td>
+                  <td class="num col-lines">{o.lineCount}</td>
+                  <td class="num">{formatMoney(o.totalCents)}</td>
+                  <td class="progress-cell">
+                    <div e:if={o.status !== "draft"} class="receive-progress">
+                      <div class="receive-track">
+                        <div class="receive-fill" style={{ width: `${receivedPercent(o)}%` }}></div>
+                      </div>
+                      <span>{o.unitsReceived}/{o.unitsOrdered}</span>
+                    </div>
+                    <span e:else class="po-sub">Not sent</span>
+                  </td>
+                  <td class="col-created">
+                    <div>{formatDay(o.createdAt)}</div>
+                    <div class="po-sub">{o.createdByName}</div>
+                  </td>
+                </tr>
+                <tr e:if={visible(orders, state.filter).length === 0} class="empty-row">
+                  <td colspan="7">No {state.filter === "all" ? "" : filterLabel(state.filter).toLowerCase()} orders.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

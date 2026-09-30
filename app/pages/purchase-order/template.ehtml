@@ -1,0 +1,347 @@
+import "./style.css";
+import { LiveView, redirect, session } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { formatWhen } from "#app/shared/lib/format";
+import { Product, formatMoney, isLow } from "#app/shared/services/inventory";
+import {
+  PoLine,
+  PoStatus,
+  PurchaseOrder,
+  STATUS_LABELS,
+  addLine,
+  deletePurchaseOrder,
+  poNumber,
+  receiveAll,
+  receiveLine,
+  removeLine,
+  sendPurchaseOrder,
+  setLineQuantity,
+  statusIntent,
+  suggestedQuantity,
+} from "#app/shared/services/purchasing";
+
+interface Action {
+  error: string;
+  busy: boolean;
+}
+
+interface AddForm {
+  productId: string;
+  quantity: number;
+  error: string;
+}
+
+interface LineState {
+  quantity: number;
+  error: string;
+}
+
+const STEPS: PoStatus[] = ["draft", "sent", "partially_received", "received"];
+
+function isManager(): boolean {
+  return session.get("role") === "manager";
+}
+
+function stepDone(order: PurchaseOrder, step: PoStatus): boolean {
+  return STEPS.indexOf(order.status) >= STEPS.indexOf(step);
+}
+
+function sortedLines(lines: LiveView<PoLine>): PoLine[] {
+  return lines.sort((a, b) => a.sku.localeCompare(b.sku));
+}
+
+function addable(products: LiveView<Product>, lines: LiveView<PoLine>, order: PurchaseOrder): Product[] {
+  return products
+    .filter((p) => p.supplierId === order.supplierId && !lines.find((l) => l.productId === p.id))
+    .sort((a, b) => Number(isLow(b)) - Number(isLow(a)) || a.sku.localeCompare(b.sku));
+}
+
+function onSend(action: Action, order: PurchaseOrder) {
+  if (!confirm(`Email ${poNumber(order.number)} to ${order.supplierEmail}?`)) {
+    return;
+  }
+
+  action.busy = true;
+  action.error = "";
+
+  try {
+    sendPurchaseOrder(order.id);
+  } catch (err: any) {
+    action.error = err.message;
+  }
+
+  action.busy = false;
+}
+
+function onDelete(action: Action, order: PurchaseOrder) {
+  if (!confirm(`Delete draft ${poNumber(order.number)}?`)) {
+    return;
+  }
+
+  action.busy = true;
+  action.error = "";
+
+  try {
+    deletePurchaseOrder(order.id);
+    redirect("/purchase-orders");
+  } catch (err: any) {
+    action.error = err.message;
+    action.busy = false;
+  }
+}
+
+function onReceiveAll(action: Action, order: PurchaseOrder) {
+  action.busy = true;
+  action.error = "";
+
+  try {
+    receiveAll(order.id);
+  } catch (err: any) {
+    action.error = err.message;
+  }
+
+  action.busy = false;
+}
+
+function onPickProduct(form: AddForm, products: LiveView<Product>) {
+  let product = products.get(form.productId);
+
+  if (product) {
+    form.quantity = suggestedQuantity(product);
+  }
+}
+
+function onAdd(form: AddForm, order: PurchaseOrder) {
+  form.error = "";
+
+  try {
+    addLine(order.id, form.productId, form.quantity);
+    form.productId = "";
+    form.quantity = 1;
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function onSetQuantity(state: LineState, line: PoLine) {
+  state.error = "";
+
+  try {
+    setLineQuantity(line.id, state.quantity);
+  } catch (err: any) {
+    state.error = err.message;
+    state.quantity = line.quantityOrdered;
+  }
+}
+
+function onRemove(state: LineState, line: PoLine) {
+  try {
+    removeLine(line.id);
+  } catch (err: any) {
+    state.error = err.message;
+  }
+}
+
+function onReceive(state: LineState, line: PoLine) {
+  state.error = "";
+
+  try {
+    receiveLine(line.id, state.quantity);
+  } catch (err: any) {
+    state.error = err.message;
+  }
+}
+
+<html lang="en" class="page-purchase-order" (
+  orders: LiveView<PurchaseOrder>,
+  lines: LiveView<PoLine>,
+  products: LiveView<Product>,
+  private action: Action = { error: "", busy: false },
+  private add: AddForm = { productId: "", quantity: 1, error: "" },
+)>
+  <head>
+    <title>{orders.at(0) ? poNumber(orders.at(0)!.number) : "Purchase order"} · Pallethaven</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout active="orders">
+      <div e:if={orders.length === 0} class="callout">
+        This purchase order was deleted. <a href="/purchase-orders">Back to purchase orders</a>
+      </div>
+
+      <div e:for={order of orders} class="stack is-xl">
+        <div class="stack is-sm">
+          <a class="crumb" href="/purchase-orders">← Purchase orders</a>
+          <div class="page-head">
+            <div class="po-title row">
+              <h1>{poNumber(order.number)}</h1>
+              <span class={["pill", statusIntent(order.status)]}>
+                <span class="pill-dot"></span>
+                {STATUS_LABELS[order.status]}
+              </span>
+            </div>
+
+            <div class="po-actions cluster">
+              <button e:if={order.status === "draft" && isManager()}
+                      class="is-ghost"
+                      disabled={action.busy}
+                      onclick={() => onDelete(action, order)}>
+                Delete draft
+              </button>
+              <button e:if={order.status === "draft" && isManager()}
+                      class="is-primary"
+                      disabled={action.busy || order.lineCount === 0}
+                      onclick={() => onSend(action, order)}>
+                Send to supplier
+              </button>
+              <button e:if={order.status === "sent" || order.status === "partially_received"}
+                      class="is-primary"
+                      disabled={action.busy}
+                      onclick={() => onReceiveAll(action, order)}>
+                Receive everything remaining
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p e:if={action.error} class="error" role="alert">{action.error}</p>
+
+        <ol class="steps" aria-label="Progress">
+          <li e:for={step of STEPS}
+              class={["step", stepDone(order, step) && "is-done", order.status === step && "is-current"]}>
+            {STATUS_LABELS[step]}
+          </li>
+        </ol>
+
+        <div class="card">
+          <div class="card-body po-facts">
+            <div>
+              <div class="fact-label">Supplier</div>
+              <div class="fact-value">{order.supplierName}</div>
+              <div class="fact-sub">{order.supplierEmail}</div>
+            </div>
+            <div>
+              <div class="fact-label">Created</div>
+              <div class="fact-value">{formatWhen(order.createdAt)}</div>
+              <div class="fact-sub">by {order.createdByName}</div>
+            </div>
+            <div>
+              <div class="fact-label">Sent</div>
+              <div class="fact-value">{order.sentAt ? formatWhen(order.sentAt) : "Not yet"}</div>
+              <div e:if={order.sentAt} class="fact-sub">emailed to supplier</div>
+            </div>
+            <div>
+              <div class="fact-label">Received</div>
+              <div class="fact-value">{order.unitsReceived} of {order.unitsOrdered} units</div>
+              <div e:if={order.receivedAt} class="fact-sub">complete {formatWhen(order.receivedAt)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table lines-table">
+            <thead>
+              <tr>
+                <th class="sku">SKU</th>
+                <th>Product</th>
+                <th class="num col-cost">Unit cost</th>
+                <th class="num">Ordered</th>
+                <th class="num">Received</th>
+                <th class="num col-total">Line total</th>
+                <th class="num">{order.status === "draft" ? "" : "Receive"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <LineRow e:for={line of sortedLines(lines)} {line} {order} />
+              <tr e:if={lines.length === 0} class="empty-row">
+                <td colspan="7">No lines yet. Add a product below.</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="sku"></td>
+                <td>Total</td>
+                <td class="col-cost"></td>
+                <td class="num">{order.unitsOrdered}</td>
+                <td class="num">{order.unitsReceived}</td>
+                <td class="num col-total">{formatMoney(order.totalCents)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div e:if={order.status === "draft" && isManager()} class="card">
+          <div class="card-head"><h2>Add a product from {order.supplierName}</h2></div>
+          <div class="card-body stack is-sm">
+            <form class="add-line" onsubmit={() => onAdd(add, order)}>
+              <div class="field">
+                <label for="add-product">Product</label>
+                <select id="add-product" value={add.productId} onchange={() => onPickProduct(add, products)} required>
+                  <option value="">Choose a product…</option>
+                  <option e:for={p of addable(products, lines, order)} value={p.id}>
+                    {p.sku} · {p.name} · {p.onHand} on hand{isLow(p) ? " (low)" : ""}
+                  </option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="add-qty">Quantity</label>
+                <input id="add-qty" type="number" min="1" value={add.quantity}>
+              </div>
+              <button type="submit" disabled={!add.productId}>Add line</button>
+            </form>
+            <p e:if={add.error} class="error" role="alert">{add.error}</p>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>
+
+<LineRow (
+  line: PoLine,
+  order: PurchaseOrder,
+  private state: LineState = {
+    quantity: order.status === "draft" ? line.quantityOrdered : line.quantityOrdered - line.quantityReceived,
+    error: "",
+  },
+)>
+  <tr class={["line-row", order.status !== "draft" && line.quantityReceived >= line.quantityOrdered && "is-complete"]}>
+    <td class="sku">{line.sku}</td>
+    <td><a class="row-link" href={`/products/${line.productId}`}>{line.name}</a></td>
+    <td class="num col-cost">{formatMoney(line.unitCostCents)}</td>
+    <td class="num">
+      <input e:if={order.status === "draft" && isManager()}
+             class="qty-input is-sm"
+             type="number"
+             min="1"
+             aria-label={`Quantity of ${line.name}`}
+             value={state.quantity}
+             onchange={() => onSetQuantity(state, line)}>
+      <span e:else>{line.quantityOrdered}</span>
+    </td>
+    <td class="num">{line.quantityReceived}</td>
+    <td class="num col-total">{formatMoney(line.quantityOrdered * line.unitCostCents)}</td>
+    <td class="num">
+      <button e:if={order.status === "draft" && isManager()}
+              class="is-ghost is-sm"
+              onclick={() => onRemove(state, line)}>
+        Remove
+      </button>
+      <span e:elseif={order.status !== "draft" && line.quantityReceived >= line.quantityOrdered} class="line-done">
+        ✓ Received
+      </span>
+      <form e:elseif={order.status !== "draft"} class="receive-form row" onsubmit={() => onReceive(state, line)}>
+        <input class="qty-input is-sm"
+               type="number"
+               min="1"
+               max={line.quantityOrdered - line.quantityReceived}
+               aria-label={`Units of ${line.name} to receive`}
+               value={state.quantity}>
+        <button type="submit" class="is-sm">Receive</button>
+      </form>
+      <p e:if={state.error} class="error line-error" role="alert">{state.error}</p>
+    </td>
+  </tr>
+</LineRow>

@@ -1,0 +1,112 @@
+@import "@elements/style";
+@import "./vars.css";
+
+/* A form that wraps a card's body and foot is only a wrapper. */
+.card > form {
+  display: block;
+  margin: 0;
+}
+
+/* Shared by the signed-in pages: the heading row and the bordered data table. */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: var(--text-3xl);
+  letter-spacing: -0.02em;
+}
+
+.page-sub {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-soft);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-xl);
+  background: var(--bg);
+}
+
+.data-table {
+  margin: 0;
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+}
+
+.data-table thead th {
+  background: var(--bg-soft);
+  font-size: var(--text-xs);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table .sku {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.data-table .empty-row td {
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.row-link {
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.row-link:hover {
+  text-decoration: underline;
+}
+
+.tab-count {
+  margin-left: var(--space-1-5);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.tab.is-active .tab-count {
+  color: var(--ink-soft);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+
+.toolbar .tab-list {
+  border-bottom: 0;
+}
+
+.toolbar .tab-list {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.toolbar .tab {
+  white-space: nowrap;
+}

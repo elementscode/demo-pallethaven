@@ -1,0 +1,43 @@
+import "./style.css";
+import { LowStockRow } from "#app/shared/services/inventory";
+
+/**
+ * The 7am digest managers get of everything at or under its reorder point.
+ *
+ * @email
+ */
+<html (name: string, products: LowStockRow[])>
+  <body class="email low-stock">
+    <div class="email-wrap">
+      <h1>{products.length} products need reordering</h1>
+      <p>Good morning {name}. These are at or under their reorder point.</p>
+
+      <table class="low-lines" role="presentation" cellpadding="0" cellspacing="0">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Product</th>
+            <th>Supplier</th>
+            <th class="num">On hand</th>
+            <th class="num">Reorder at</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr e:for={p of products}>
+            <td class="sku">{p.sku}</td>
+            <td>{p.name}</td>
+            <td>{p.supplierName}</td>
+            <td class={["num", p.onHand === 0 && "out"]}>{p.onHand}</td>
+            <td class="num">{p.reorderPoint}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><a href="/?filter=low">Open the low stock list</a> to start a purchase order.</p>
+
+      <div class="email-footer">
+        <p>Pallethaven inventory · sent every morning at 7am</p>
+      </div>
+    </div>
+  </body>
+</html>

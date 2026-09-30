@@ -1,0 +1,197 @@
+import "./style.css";
+import { LiveView, session, sql, ValidationError } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { requireManager } from "#app/shared/services/auth";
+import { Product, isLow } from "#app/shared/services/inventory";
+import { PurchaseOrder } from "#app/shared/services/purchasing";
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName: string;
+  email: string;
+}
+
+export interface SupplierForm {
+  id: string;
+  name: string;
+  contactName: string;
+  email: string;
+  error: string;
+}
+
+export function listSuppliers(): Supplier[] {
+  return sql<Supplier>(`select id, name, contactName, email from suppliers order by name`).all();
+}
+
+/**
+ * Creates a supplier, or updates one when the form carries an id. Returns the
+ * refreshed list.
+ *
+ * @rpc
+ */
+export function saveSupplier(form: SupplierForm): Supplier[] {
+  requireManager();
+  let name = form.name.trim();
+  let contactName = form.contactName.trim();
+  let email = form.email.trim().toLowerCase();
+
+  if (!name) {
+    throw new ValidationError("A supplier needs a name.");
+  }
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new ValidationError("Enter the email purchase orders go to.");
+  }
+
+  let clash = sql(`select 1 from suppliers where lower(name) = lower(${name}) and id::text <> ${form.id}`);
+
+  if (!clash.empty()) {
+    throw new ValidationError(`${name} is already a supplier.`);
+  }
+
+  if (form.id) {
+    sql(`update suppliers set name = ${name}, contactName = ${contactName}, email = ${email} where id = ${form.id}`);
+  } else {
+    sql(`insert into suppliers (name, contactName, email) values (${name}, ${contactName}, ${email})`);
+  }
+
+  return listSuppliers();
+}
+
+function blankForm(): SupplierForm {
+  return { id: "", name: "", contactName: "", email: "", error: "" };
+}
+
+function onEdit(form: SupplierForm, s: Supplier) {
+  form.id = s.id;
+  form.name = s.name;
+  form.contactName = s.contactName;
+  form.email = s.email;
+  form.error = "";
+}
+
+function onSave(form: SupplierForm, list: { value: Supplier[] }, ui: { adding: boolean; editing: string }) {
+  try {
+    list.value = saveSupplier(form);
+    ui.adding = false;
+    ui.editing = "";
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function productCount(products: LiveView<Product>, id: string): number {
+  return products.filter((p) => p.supplierId === id).length;
+}
+
+function lowCount(products: LiveView<Product>, id: string): number {
+  return products.filter((p) => p.supplierId === id && isLow(p)).length;
+}
+
+function openCount(orders: LiveView<PurchaseOrder>, id: string): number {
+  return orders.filter((o) => o.supplierId === id && o.status !== "received").length;
+}
+
+<html lang="en" class="page-suppliers" (
+  initial: Supplier[],
+  products: LiveView<Product>,
+  orders: LiveView<PurchaseOrder>,
+  private list: { value: Supplier[] } = { value: initial },
+  private ui: { adding: boolean; editing: string } = { adding: false, editing: "" },
+  private form: SupplierForm = blankForm(),
+)>
+  <head>
+    <title>Suppliers · Pallethaven</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout active="suppliers">
+      <div class="stack is-xl">
+        <div class="page-head">
+          <div>
+            <h1>Suppliers</h1>
+            <p class="page-sub">Where stock comes from, and where purchase orders are emailed.</p>
+          </div>
+          <button e:if={session.get("role") === "manager" && !ui.adding}
+                  class="is-primary"
+                  onclick={() => { form = blankForm(); ui.editing = ""; ui.adding = true; }}>
+            Add supplier
+          </button>
+        </div>
+
+        <div e:if={ui.adding} class="card">
+          <div class="card-head"><h2>New supplier</h2></div>
+          <SupplierFields {form} {list} {ui} />
+        </div>
+
+        <div class="supplier-grid">
+          <div e:for={s of list.value} class="card supplier-card">
+            <SupplierFields e:if={ui.editing === s.id} {form} {list} {ui} />
+            <div e:else class="card-body">
+              <div class="stack is-xs">
+                <h2 class="supplier-name">{s.name}</h2>
+                <div class="supplier-contact">
+                  <span e:if={s.contactName}>{s.contactName} · </span>
+                  <a href={`mailto:${s.email}`}>{s.email}</a>
+                </div>
+              </div>
+              <div class="supplier-numbers">
+                <div>
+                  <div class="num-label">Products</div>
+                  <div class="num-value">{productCount(products, s.id)}</div>
+                </div>
+                <div>
+                  <div class="num-label">Low stock</div>
+                  <div class={["num-value", lowCount(products, s.id) > 0 && "is-alert"]}>{lowCount(products, s.id)}</div>
+                </div>
+                <div>
+                  <div class="num-label">Open orders</div>
+                  <div class="num-value">{openCount(orders, s.id)}</div>
+                </div>
+              </div>
+            </div>
+            <div e:if={session.get("role") === "manager" && ui.editing !== s.id} class="card-foot">
+              <a href="/purchase-orders">Purchase orders</a>
+              <button class="is-sm is-ghost"
+                      onclick={() => { onEdit(form, s); ui.adding = false; ui.editing = s.id; }}>
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>
+
+<SupplierFields (
+  form: SupplierForm,
+  list: { value: Supplier[] },
+  ui: { adding: boolean; editing: string },
+)>
+  <form onsubmit={() => onSave(form, list, ui)}>
+    <div class="card-body stack">
+      <p e:if={form.error} class="error" role="alert">{form.error}</p>
+      <div class="supplier-form-grid">
+        <div class="field">
+          <label for={`sup-name-${form.id}`}>Name</label>
+          <input id={`sup-name-${form.id}`} value={form.name} required>
+        </div>
+        <div class="field">
+          <label for={`sup-contact-${form.id}`}>Contact</label>
+          <input id={`sup-contact-${form.id}`} value={form.contactName} placeholder="Who you order from">
+        </div>
+        <div class="field">
+          <label for={`sup-email-${form.id}`}>Email</label>
+          <input id={`sup-email-${form.id}`} type="email" value={form.email} autocapitalize="none" spellcheck={false} required>
+        </div>
+      </div>
+    </div>
+    <div class="card-foot">
+      <button type="button" class="is-ghost" onclick={() => { ui.adding = false; ui.editing = ""; }}>Cancel</button>
+      <button type="submit" class="is-primary">{form.id ? "Save" : "Add supplier"}</button>
+    </div>
+  </form>
+</SupplierFields>

@@ -1,0 +1,56 @@
+@import "#app/shared/styles/page.css";
+
+.supplier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--space-5);
+}
+
+.supplier-card .card-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.supplier-name {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.supplier-contact {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.supplier-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.num-label {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
+.num-value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.num-value.is-alert {
+  color: var(--warning);
+}
+
+.supplier-card .card-foot {
+  justify-content: space-between;
+}
+
+.supplier-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+}

@@ -1,0 +1,47 @@
+@import "#app/shared/styles/email.css";
+
+.email.purchase-order .po-eyebrow {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #52606d;
+}
+
+.email.purchase-order .po-lines {
+  width: 100%;
+  margin: 20px 0 24px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.email.purchase-order .po-lines th {
+  padding: 8px 6px;
+  border-bottom: 2px solid #1f2933;
+  text-align: left;
+  font-size: 12px;
+  color: #52606d;
+}
+
+.email.purchase-order .po-lines td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #e4e7eb;
+  vertical-align: top;
+}
+
+.email.purchase-order .po-lines .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.email.purchase-order .po-lines .sku {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.email.purchase-order .po-lines tfoot td {
+  border-bottom: 0;
+  font-weight: 600;
+}
