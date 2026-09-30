@@ -1,0 +1,309 @@
+import "./style.css";
+import { LiveView, session } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { formatWhen } from "#app/shared/lib/format";
+import {
+  Adjustment,
+  Product,
+  StockMovement,
+  adjustStock,
+  formatMoney,
+  isLow,
+  updateProduct,
+} from "#app/shared/services/inventory";
+import { poNumber } from "#app/shared/services/purchasing";
+
+export interface SupplierOption {
+  id: string;
+  name: string;
+}
+
+export interface OnOrder {
+  purchaseOrderId: string;
+  number: number;
+  remaining: number;
+}
+
+type Reason = Adjustment["reason"];
+
+interface AdjustForm {
+  reason: Reason;
+  quantity: number;
+  note: string;
+  error: string;
+  saved: string;
+  busy: boolean;
+}
+
+interface EditForm {
+  open: boolean;
+  name: string;
+  supplierId: string;
+  cost: string;
+  reorderPoint: number;
+  error: string;
+}
+
+const REASONS: { value: Reason; label: string }[] = [
+  { value: "count", label: "Count" },
+  { value: "damage", label: "Damage" },
+  { value: "sale", label: "Sale" },
+];
+
+const MOVEMENT_LABELS: Record<StockMovement["reason"], string> = {
+  count: "Stock count",
+  damage: "Damage",
+  sale: "Sale",
+  receipt: "Received",
+};
+
+export function projected(onHand: number, form: { reason: Reason; quantity: number }): number {
+  let quantity = Math.trunc(Number(form.quantity) || 0);
+
+  return form.reason === "count" ? quantity : onHand - quantity;
+}
+
+function emptyAdjust(reason: Reason = "count"): AdjustForm {
+  return { reason, quantity: 0, note: "", error: "", saved: "", busy: false };
+}
+
+function onReason(form: AdjustForm, product: Product, reason: Reason) {
+  form.reason = reason;
+  form.quantity = reason === "count" ? product.onHand : 1;
+  form.error = "";
+}
+
+function onAdjust(form: AdjustForm, product: Product) {
+  form.busy = true;
+  form.error = "";
+
+  try {
+    adjustStock({ productId: product.id, reason: form.reason, quantity: form.quantity, note: form.note });
+    form.saved = `${MOVEMENT_LABELS[form.reason]} recorded.`;
+    form.note = "";
+    form.quantity = form.reason === "count" ? product.onHand : 1;
+  } catch (err: any) {
+    form.error = err.message;
+    form.saved = "";
+  }
+
+  form.busy = false;
+}
+
+function openEdit(edit: EditForm, product: Product) {
+  edit.open = true;
+  edit.error = "";
+  edit.name = product.name;
+  edit.supplierId = product.supplierId;
+  edit.cost = (product.costCents / 100).toFixed(2);
+  edit.reorderPoint = product.reorderPoint;
+}
+
+function onSaveEdit(edit: EditForm, product: Product) {
+  try {
+    updateProduct({
+      productId: product.id,
+      name: edit.name,
+      supplierId: edit.supplierId,
+      cost: edit.cost,
+      reorderPoint: edit.reorderPoint,
+    });
+
+    edit.open = false;
+  } catch (err: any) {
+    edit.error = err.message;
+  }
+}
+
+function fillPercent(p: Product): number {
+  let scale = Math.max(p.reorderPoint * 3, p.onHand, 1);
+
+  return Math.min(100, (p.onHand / scale) * 100);
+}
+
+function markPercent(p: Product): number {
+  let scale = Math.max(p.reorderPoint * 3, p.onHand, 1);
+
+  return Math.min(100, (p.reorderPoint / scale) * 100);
+}
+
+<html lang="en" class="page-product" (
+  products: LiveView<Product>,
+  movements: LiveView<StockMovement>,
+  suppliers: SupplierOption[],
+  onOrder: OnOrder[],
+  private form: AdjustForm = emptyAdjust(),
+  private edit: EditForm = { open: false, name: "", supplierId: "", cost: "", reorderPoint: 0, error: "" },
+)>
+  <head>
+    <title>{products.at(0)?.name ?? "Product"} · Pallethaven</title>
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout active="stock">
+      <div e:for={product of products} class="stack is-xl" oninit={() => form.quantity = product.onHand}>
+        <div class="stack is-sm">
+          <a class="crumb" href="/">← Stock</a>
+          <div class="product-title">
+            <h1>{product.name}</h1>
+          </div>
+          <div class="product-meta cluster">
+            <span class="sku">{product.sku}</span>
+            <span>{product.supplierName}</span>
+            <span>{formatMoney(product.costCents)} per unit</span>
+          </div>
+        </div>
+
+        <div class="product-grid">
+          <div class="stack is-lg">
+            <div class="card">
+              <div class="card-body stack">
+                <div class="level">
+                  <div>
+                    <div class="level-label">On hand</div>
+                    <div class={["level-value", isLow(product) && "is-low", product.onHand === 0 && "is-out"]}>
+                      {product.onHand}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="level-label">Reorder at</div>
+                    <div class="level-value">{product.reorderPoint}</div>
+                  </div>
+                  <div class="level-bar" aria-hidden="true">
+                    <div class={["level-fill", isLow(product) && "is-low"]} style={{ width: `${fillPercent(product)}%` }}></div>
+                    <div class="level-mark" style={{ left: `${markPercent(product)}%` }}></div>
+                  </div>
+                </div>
+                <div class="cluster is-sm">
+                  <span e:if={product.onHand === 0} class="pill is-danger"><span class="pill-dot"></span>Out of stock</span>
+                  <span e:elseif={isLow(product)} class="pill is-warning"><span class="pill-dot"></span>At or under reorder point</span>
+                  <span e:else class="pill is-success"><span class="pill-dot"></span>In stock</span>
+                </div>
+                <p e:if={onOrder.length > 0} class="on-order">
+                  On order:
+                  <span e:for={o of onOrder}>
+                    <a href={`/purchase-orders/${o.purchaseOrderId}`}>{o.remaining} on {poNumber(o.number)}</a>
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head"><h2>Adjust stock</h2></div>
+              <form onsubmit={() => onAdjust(form, product)}>
+                <div class="card-body stack">
+                  <div class="reason-picker" role="radiogroup" aria-label="Reason">
+                    <button e:for={r of REASONS}
+                            type="button"
+                            role="radio"
+                            aria-checked={form.reason === r.value}
+                            class={["is-sm", form.reason === r.value && "is-active"]}
+                            onclick={() => onReason(form, product, r.value)}>
+                      {r.label}
+                    </button>
+                  </div>
+
+                  <div class="field">
+                    <label for="adj-qty">{form.reason === "count" ? "Counted on the shelf" : "Units removed"}</label>
+                    <input id="adj-qty" type="number" min="0" inputmode="numeric" value={form.quantity} required>
+                    <p class="hint">
+                      On hand goes from {product.onHand} to <strong>{projected(product.onHand, form)}</strong>.
+                    </p>
+                  </div>
+
+                  <div class="field">
+                    <label for="adj-note">Note <span class="hint">optional</span></label>
+                    <input id="adj-note" value={form.note} placeholder={form.reason === "damage" ? "What happened?" : ""}>
+                  </div>
+
+                  <p e:if={form.error} class="error" role="alert">{form.error}</p>
+                  <p e:elseif={form.saved} class="hint" role="status">{form.saved}</p>
+
+                  <button type="submit" class="is-primary is-block" disabled={form.busy}>
+                    Record {form.reason === "count" ? "count" : form.reason}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div e:if={session.get("role") === "manager"} class="card">
+              <div class="card-head"><h2>Details</h2></div>
+              <div e:if={!edit.open} class="card-body stack is-sm">
+                <p class="card-note">Name, supplier, unit cost and reorder point.</p>
+                <button class="is-sm" onclick={() => openEdit(edit, product)}>Edit details</button>
+              </div>
+              <form e:else onsubmit={() => onSaveEdit(edit, product)}>
+                <div class="card-body stack">
+                  <p e:if={edit.error} class="error" role="alert">{edit.error}</p>
+                  <div class="field">
+                    <label for="ed-name">Name</label>
+                    <input id="ed-name" value={edit.name} required>
+                  </div>
+                  <div class="field">
+                    <label for="ed-supplier">Supplier</label>
+                    <select id="ed-supplier" value={edit.supplierId}>
+                      <option e:for={s of suppliers} value={s.id}>{s.name}</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="ed-cost">Unit cost</label>
+                    <input id="ed-cost" value={edit.cost} inputmode="decimal" required>
+                  </div>
+                  <div class="field">
+                    <label for="ed-reorder">Reorder point</label>
+                    <input id="ed-reorder" type="number" min="0" value={edit.reorderPoint}>
+                  </div>
+                </div>
+                <div class="card-foot">
+                  <button type="button" class="is-ghost" onclick={() => edit.open = false}>Cancel</button>
+                  <button type="submit" class="is-primary">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card history-card">
+            <div class="card-head"><h2>Movement history</h2></div>
+            <div class="card-body">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Reason</th>
+                    <th class="num">Change</th>
+                    <th class="num">After</th>
+                    <th class="col-by">By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr e:for={m of movements}>
+                    <td class="when">{formatWhen(m.createdAt)}</td>
+                    <td>
+                      <div>
+                        {MOVEMENT_LABELS[m.reason]}
+                        <a e:if={m.purchaseOrderId && m.purchaseOrderNumber}
+                           href={`/purchase-orders/${m.purchaseOrderId}`}>
+                          on {poNumber(m.purchaseOrderNumber ?? 0)}
+                        </a>
+                      </div>
+                      <div e:if={m.note} class="note">{m.note}</div>
+                    </td>
+                    <td class={["num", "delta", m.delta > 0 && "is-up", m.delta < 0 && "is-down"]}>
+                      {m.delta > 0 ? `+${m.delta}` : m.delta === 0 ? "±0" : `${m.delta}`}
+                    </td>
+                    <td class="num">{m.quantityAfter}</td>
+                    <td class="col-by note">{m.userName}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div e:if={movements.hasMore} class="card-foot history-more">
+              <button class="is-sm is-ghost" onclick={() => movements.more()}>Show older</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

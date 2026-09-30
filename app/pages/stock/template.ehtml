@@ -1,0 +1,249 @@
+import "./style.css";
+import { LiveView, redirect, session } from "@elements/app";
+import favicon from "#app/shared/assets/favicons/favicon.svg";
+import { Layout } from "#app/shared/templates/layout";
+import { Product, NewProduct, createProduct, formatMoney, isLow } from "#app/shared/services/inventory";
+
+export type StockFilter = "all" | "low";
+
+export interface SupplierOption {
+  id: string;
+  name: string;
+}
+
+interface StockState {
+  filter: StockFilter;
+  search: string;
+}
+
+interface ProductForm extends NewProduct {
+  open: boolean;
+  error: string;
+}
+
+export function matches(p: Product, state: StockState): boolean {
+  if (state.filter === "low" && !isLow(p)) {
+    return false;
+  }
+
+  let q = state.search.trim().toLowerCase();
+
+  if (!q) {
+    return true;
+  }
+
+  return (
+    p.sku.toLowerCase().includes(q) ||
+    p.name.toLowerCase().includes(q) ||
+    p.supplierName.toLowerCase().includes(q)
+  );
+}
+
+function visible(products: LiveView<Product>, state: StockState): Product[] {
+  return products
+    .filter((p) => matches(p, state))
+    .sort((a, b) => a.sku.localeCompare(b.sku));
+}
+
+function inventoryValue(products: LiveView<Product>): number {
+  return products.reduce((sum, p) => sum + p.onHand * p.costCents, 0);
+}
+
+function onFilter(state: StockState, filter: StockFilter) {
+  state.filter = filter;
+
+  let url = filter === "low" ? "/?filter=low" : "/";
+  history.replaceState(null, "", url);
+}
+
+function emptyForm(suppliers: SupplierOption[]): ProductForm {
+  return {
+    open: false,
+    error: "",
+    sku: "",
+    name: "",
+    supplierId: suppliers[0]?.id ?? "",
+    cost: "",
+    onHand: 0,
+    reorderPoint: 0,
+  };
+}
+
+function onCreate(form: ProductForm) {
+  try {
+    let id = createProduct({
+      sku: form.sku,
+      name: form.name,
+      supplierId: form.supplierId,
+      cost: form.cost,
+      onHand: form.onHand,
+      reorderPoint: form.reorderPoint,
+    });
+
+    redirect(`/products/${id}`);
+  } catch (err: any) {
+    form.error = err.message;
+  }
+}
+
+function stockLabel(p: Product): string {
+  if (p.onHand === 0) {
+    return "Out";
+  }
+
+  return isLow(p) ? "Low" : "In stock";
+}
+
+<html lang="en" class="page-stock" (
+  products: LiveView<Product>,
+  suppliers: SupplierOption[],
+  initialFilter: StockFilter,
+  private state: StockState = { filter: initialFilter, search: "" },
+  private form: ProductForm = emptyForm(suppliers),
+)>
+  <head>
+    <title>Stock · Pallethaven</title>
+    <meta name="description" content="Stock levels">
+    <link rel="icon" type="image/svg+xml" href={favicon} />
+  </head>
+  <body>
+    <Layout active="stock">
+      <div class="stack is-xl">
+        <div class="page-head">
+          <div>
+            <h1>Stock</h1>
+            <p class="page-sub">Everything in the warehouse, live as it moves.</p>
+          </div>
+          <button e:if={session.get("role") === "manager" && !form.open}
+                  class="is-primary"
+                  onclick={() => form.open = true}>
+            New product
+          </button>
+        </div>
+
+        <div e:if={form.open} class="card new-product">
+          <div class="card-head"><h2>New product</h2></div>
+          <form onsubmit={() => onCreate(form)}>
+            <div class="card-body stack">
+              <p e:if={form.error} class="error" role="alert">{form.error}</p>
+              <div class="product-grid">
+                <div class="field">
+                  <label for="np-sku">SKU</label>
+                  <input id="np-sku" value={form.sku} placeholder="CP-1014" autocapitalize="characters" spellcheck={false} required>
+                </div>
+                <div class="field">
+                  <label for="np-name">Name</label>
+                  <input id="np-name" value={form.name} placeholder="Linen Apron" required>
+                </div>
+                <div class="field">
+                  <label for="np-supplier">Supplier</label>
+                  <select id="np-supplier" value={form.supplierId}>
+                    <option e:for={s of suppliers} value={s.id}>{s.name}</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="np-cost">Unit cost</label>
+                  <input id="np-cost" value={form.cost} placeholder="12.50" inputmode="decimal" required>
+                </div>
+                <div class="field">
+                  <label for="np-onhand">On hand</label>
+                  <input id="np-onhand" type="number" min="0" value={form.onHand}>
+                </div>
+                <div class="field">
+                  <label for="np-reorder">Reorder point</label>
+                  <input id="np-reorder" type="number" min="0" value={form.reorderPoint}>
+                </div>
+              </div>
+            </div>
+            <div class="card-foot">
+              <button type="button" class="is-ghost" onclick={() => form = emptyForm(suppliers)}>Cancel</button>
+              <button type="submit" class="is-primary">Add product</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Products</div>
+            <div class="stat-value">{products.length}</div>
+          </div>
+          <div class={["stat", products.filter(isLow).length > 0 && "is-alert"]}>
+            <div class="stat-label">At or under reorder</div>
+            <div class="stat-value">{products.filter(isLow).length}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Out of stock</div>
+            <div class="stat-value">{products.filter((p) => p.onHand === 0).length}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Stock value at cost</div>
+            <div class="stat-value">{formatMoney(inventoryValue(products))}</div>
+          </div>
+        </div>
+
+        <div class="stack is-md">
+          <div class="toolbar">
+            <div class="tab-list" role="tablist">
+              <button class={["tab", state.filter === "all" && "is-active"]}
+                      role="tab"
+                      onclick={() => onFilter(state, "all")}>
+                All<span class="tab-count">{products.length}</span>
+              </button>
+              <button class={["tab", state.filter === "low" && "is-active"]}
+                      role="tab"
+                      onclick={() => onFilter(state, "low")}>
+                Low stock<span class="tab-count">{products.filter(isLow).length}</span>
+              </button>
+            </div>
+            <input class="search"
+                   type="search"
+                   value={state.search}
+                   placeholder="Search SKU, product or supplier"
+                   aria-label="Search products">
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table stock-table">
+              <thead>
+                <tr>
+                  <th class="col-sku">SKU</th>
+                  <th>Product</th>
+                  <th class="col-supplier">Supplier</th>
+                  <th class="num col-cost">Cost</th>
+                  <th class="num">On hand</th>
+                  <th class="num">Reorder at</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr e:for={p of visible(products, state)}
+                    class={["stock-row", isLow(p) && "is-low", p.onHand === 0 && "is-out"]}>
+                  <td class="sku col-sku">{p.sku}</td>
+                  <td>
+                    <a class="row-link" href={`/products/${p.id}`}>{p.name}</a>
+                    <div class="sku sku-sub">{p.sku}</div>
+                  </td>
+                  <td class="col-supplier">{p.supplierName}</td>
+                  <td class="num col-cost">{formatMoney(p.costCents)}</td>
+                  <td class="num onhand">{p.onHand}</td>
+                  <td class="num">{p.reorderPoint}</td>
+                  <td>
+                    <span class={["pill", p.onHand === 0 ? "is-danger" : isLow(p) ? "is-warning" : "is-success"]}>
+                      <span class="pill-dot"></span>
+                      {stockLabel(p)}
+                    </span>
+                  </td>
+                </tr>
+                <tr e:if={visible(products, state).length === 0} class="empty-row">
+                  <td colspan="7">
+                    {state.filter === "low" && !state.search ? "Nothing is at or under its reorder point." : "No products match that search."}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  </body>
+</html>

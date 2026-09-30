@@ -1,0 +1,45 @@
+import "./style.css";
+import { redirect, session } from "@elements/app";
+import { signout } from "#app/shared/services/auth";
+
+function onSignout() {
+  signout();
+  redirect("/signin");
+}
+
+<Layout (active: string)>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand row" href="/">
+          <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="11" rx="1.5" fill="currentColor"/>
+            <rect x="2" y="15.5" width="20" height="2" rx="0.8" fill="currentColor"/>
+            <rect x="3" y="17.5" width="3" height="3" fill="currentColor"/>
+            <rect x="10.5" y="17.5" width="3" height="3" fill="currentColor"/>
+            <rect x="18" y="17.5" width="3" height="3" fill="currentColor"/>
+          </svg>
+          Pallethaven
+        </a>
+
+        <nav class="topnav row" aria-label="Sections">
+          <a href="/" class={["topnav-link", active === "stock" && "is-active"]}>Stock</a>
+          <a href="/purchase-orders" class={["topnav-link", active === "orders" && "is-active"]}>Purchase orders</a>
+          <a href="/suppliers" class={["topnav-link", active === "suppliers" && "is-active"]}>Suppliers</a>
+        </nav>
+
+        <div class="topbar-user row">
+          <span class="topbar-name">{session.get("userName")}</span>
+          <span class={["pill", session.get("role") === "manager" && "is-accent"]}>
+            {session.get("role") === "manager" ? "Manager" : "Staff"}
+          </span>
+          <button class="is-ghost is-sm" onclick={() => onSignout()}>Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout-main">
+      <slot/>
+    </main>
+  </div>
+</Layout>
