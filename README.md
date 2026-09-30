@@ -1,10 +1,12 @@
+![Pallethaven, an inventory and purchasing app built with Elements: the stock list with 40 products, low-stock and out-of-stock counts, stock value at cost, and Low and In stock status pills.](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782/poster?v=efd1183ca526)
+
 # Pallethaven
 
 > A demo app built with [Elements](https://elements.dev).
 
-A live stock list with low-stock flags, adjustments with a movement history, purchase orders emailed to suppliers and received line by line, and a 7am low-stock email.
+Stock levels with low-stock flags and movement history, purchase orders emailed to suppliers and received line by line, all live.
 
-**Demo:** [Pallethaven](TBD)
+**Demo:** [Pallethaven](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782)
 
 ## Agent specs
 
