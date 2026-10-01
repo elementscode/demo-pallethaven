@@ -36,9 +36,13 @@ Pallethaven needed stock counts that change as people work, a history behind eve
 - **Server calls as function calls.** Pages call `@rpc` functions such as `createPurchaseOrder`, `addLine`, `receiveAll` and `updateProduct` straight from the template.
 - **Data and roles from SQL.** Two migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. `requireUser` and `requireManager` in `app/shared/services/auth.ts` let staff count and receive stock and give managers the orders and product edits.
 
-### What the agent got from the tooling
+### What the project server gave the agent
 
-The agent ran 20 builds in 19 minutes, checking its work after each edit and moving straight on. The build caught three async callbacks passed to a helper that did not await them, each with a message that showed the corrected signature. The agent read 45 manual pages as it reached each part, from `recipes/admin-table` and `livetable/partitions` to `style/email`, then wrote 33 tests and checked its pages at phone width in a real browser.
+The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
+
+### What shipped
+
+The app type-checks with zero errors and all 33 tests pass. Every page was checked on desktop and phone before publishing. The repo was installed fresh from GitHub and run before the demo went live.
 
 Start in `app/shared/services/purchasing.ts`.
 
