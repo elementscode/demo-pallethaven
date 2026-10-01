@@ -30,10 +30,15 @@ Pallethaven needed stock counts that change as people work, a history behind eve
 ### What Elements gave the app
 
 - **Live stock and orders.** Products, stock movements, purchase orders and their lines are LiveTables. When a delivery is received, the stock list, the product's history and the order's status update on every open screen.
+
 - **A history behind every number.** Every change to a count goes through one function that adjusts the stock and records why: a count, damage, a sale or a receipt against a purchase order.
+
 - **Purchase orders by email.** Sending an order marks it sent and queues a job in the same transaction, so the supplier's email goes out once the order is saved as sent. Staff then receive it line by line, and the order moves to partly or fully received.
+
 - **A morning digest.** A one-line cron schedule runs a job at 7am that emails each manager the products at or under their reorder point.
+
 - **Server calls as function calls.** Creating orders, adding lines, receiving stock and editing products call server functions straight from the page with `@rpc`.
+
 - **Data and roles from SQL.** Migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. Sessions and roles let staff count and receive stock and give managers the orders and product edits.
 
 ### What the project server gave the agent
