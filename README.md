@@ -23,6 +23,25 @@ app.
 elements create pallethaven -scaffold=elementscode/demo-pallethaven
 ```
 
+## How it's built
+
+Pallethaven needed stock counts that change as people work, a history behind every number, purchase orders sent to suppliers by email, receiving line by line and a morning list of what to reorder. Each of those is a part of Elements, so the agent spent its 19 minutes on the shop itself.
+
+### What Elements gave the app
+
+- **Live stock and orders.** `products` and `stockMovements` in `app/shared/services/inventory.ts`, and `purchaseOrders` and `poLines` in `purchasing.ts`, are LiveTables fed by notify triggers in the schema migration. When a delivery is received, the stock list, the product's history and the order's status update on every open screen.
+- **A history behind every number.** `adjustStock` and `receiveLine` lock the product row and call one `recordMovement`, which changes the on-hand count and writes the movement that explains it: a count, damage, a sale or a receipt against a purchase order.
+- **Purchase orders by email.** `sendPurchaseOrder` marks a draft sent and schedules `SendPurchaseOrderJob` in the same transaction, so the supplier's email goes out only when the status change commits. The email is the `purchase-order` template in `app/emails/`.
+- **A morning digest.** One line in `index.ts` runs `LowStockDigestJob` every day at 7am, and each manager gets the `low-stock` email listing every product at or under its reorder point.
+- **Server calls as function calls.** Pages call `@rpc` functions such as `createPurchaseOrder`, `addLine`, `receiveAll` and `updateProduct` straight from the template.
+- **Data and roles from SQL.** Two migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. `requireUser` and `requireManager` in `app/shared/services/auth.ts` let staff count and receive stock and give managers the orders and product edits.
+
+### What the agent got from the tooling
+
+The agent ran 20 builds in 19 minutes. By the build's own timer, the median build finished in 8.3 milliseconds, so it checked its work after each edit and kept going. The build caught three async callbacks passed to a helper that did not await them, each with a message that showed the corrected signature. The agent read 45 manual pages as it reached each part, from `recipes/admin-table` and `livetable/partitions` to `style/email`, then wrote 33 tests and checked its pages at phone width in a real browser.
+
+Start in `app/shared/services/purchasing.ts`.
+
 ## Demo accounts
 
 The seed creates three suppliers (Cedar & Pine Home Goods, Brightline
