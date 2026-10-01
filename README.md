@@ -38,7 +38,7 @@ Pallethaven needed stock counts that change as people work, a history behind eve
 
 ### What the agent got from the tooling
 
-The agent ran 20 builds in 19 minutes. By the build's own timer, the median build finished in 8.3 milliseconds, so it checked its work after each edit and kept going. The build caught three async callbacks passed to a helper that did not await them, each with a message that showed the corrected signature. The agent read 45 manual pages as it reached each part, from `recipes/admin-table` and `livetable/partitions` to `style/email`, then wrote 33 tests and checked its pages at phone width in a real browser.
+The agent ran 20 builds in 19 minutes, checking its work after each edit and moving straight on. The build caught three async callbacks passed to a helper that did not await them, each with a message that showed the corrected signature. The agent read 45 manual pages as it reached each part, from `recipes/admin-table` and `livetable/partitions` to `style/email`, then wrote 33 tests and checked its pages at phone width in a real browser.
 
 Start in `app/shared/services/purchasing.ts`.
 
