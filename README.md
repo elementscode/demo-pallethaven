@@ -29,12 +29,12 @@ Pallethaven needed stock counts that change as people work, a history behind eve
 
 ### What Elements gave the app
 
-- **Live stock and orders.** `products` and `stockMovements` in `app/shared/services/inventory.ts`, and `purchaseOrders` and `poLines` in `purchasing.ts`, are LiveTables fed by notify triggers in the schema migration. When a delivery is received, the stock list, the product's history and the order's status update on every open screen.
-- **A history behind every number.** `adjustStock` and `receiveLine` lock the product row and call one `recordMovement`, which changes the on-hand count and writes the movement that explains it: a count, damage, a sale or a receipt against a purchase order.
-- **Purchase orders by email.** `sendPurchaseOrder` marks a draft sent and schedules `SendPurchaseOrderJob` in the same transaction, so the supplier's email goes out only when the status change commits. The email is the `purchase-order` template in `app/emails/`.
-- **A morning digest.** One line in `index.ts` runs `LowStockDigestJob` every day at 7am, and each manager gets the `low-stock` email listing every product at or under its reorder point.
-- **Server calls as function calls.** Pages call `@rpc` functions such as `createPurchaseOrder`, `addLine`, `receiveAll` and `updateProduct` straight from the template.
-- **Data and roles from SQL.** Two migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. `requireUser` and `requireManager` in `app/shared/services/auth.ts` let staff count and receive stock and give managers the orders and product edits.
+- **Live stock and orders.** Products, stock movements, purchase orders and their lines are LiveTables. When a delivery is received, the stock list, the product's history and the order's status update on every open screen.
+- **A history behind every number.** Every change to a count goes through one function that adjusts the stock and records why: a count, damage, a sale or a receipt against a purchase order.
+- **Purchase orders by email.** Sending an order marks it sent and queues a job in the same transaction, so the supplier's email goes out once the order is saved as sent. Staff then receive it line by line, and the order moves to partly or fully received.
+- **A morning digest.** A one-line cron schedule runs a job at 7am that emails each manager the products at or under their reorder point.
+- **Server calls as function calls.** Creating orders, adding lines, receiving stock and editing products call server functions straight from the page with `@rpc`.
+- **Data and roles from SQL.** Migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. Sessions and roles let staff count and receive stock and give managers the orders and product edits.
 
 ### What the project server gave the agent
 
@@ -43,8 +43,6 @@ The project server runs alongside the agent and answers as soon as a file is sav
 ### What shipped
 
 The app type-checks with zero errors and all 33 tests pass. Every page works on desktop and phone.
-
-Start in `app/shared/services/purchasing.ts`.
 
 ## Demo accounts
 
