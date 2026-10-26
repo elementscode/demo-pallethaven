@@ -1,30 +1,16 @@
-![Pallethaven, an inventory and purchasing app built with Elements: the stock list with 40 products, low-stock and out-of-stock counts, stock value at cost, and Low and In stock status pills.](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782/poster?v=efd1183ca526)
+![Inventory with purchase orders, built by Claude Code on Elements: the stock list with 40 products, low-stock and out-of-stock counts, stock value at cost, and Low and In stock status pills.](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782/poster?v=efd1183ca526)
 
-# Pallethaven
+# Inventory with purchase orders, built by Claude Code on Elements
 
-> A demo app built with [Elements](https://elements.dev).
+> Pallethaven is a full-stack app built with Claude Code on Elements.
 
 Stock levels with low-stock flags and movement history, purchase orders emailed to suppliers and received line by line, all live.
 
-**Demo:** [Pallethaven](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782)
-
-## Agent specs
-
-- **Agent:** Claude Code, Opus 5.5 Medium
-- **Time:** 19 min
-- **Cost:** $7.71 at API rates, September 2026
-
-## Get started
-
-```bash
-elements create pallethaven -scaffold=elementscode/demo-pallethaven
-```
+[Run this app on your machine](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782). Use this demo as inspiration, or as the starting point for your own app. Your agent creates a new app with this one as the scaffold, and you prompt it to add whatever features you want.
 
 ## How it's built
 
 Pallethaven needed stock counts that change as people work, a history behind every number, purchase orders sent to suppliers by email, receiving line by line and a morning list of what to reorder. Each of those is a part of Elements, so the agent spent its 19 minutes on the shop itself.
-
-### What Elements gave the app
 
 - **Live stock and orders.** Products, stock movements, purchase orders and their lines are LiveTables. When a delivery is received, the stock list, the product's history and the order's status update on every open screen.
 
@@ -38,34 +24,6 @@ Pallethaven needed stock counts that change as people work, a history behind eve
 
 - **Data and roles from SQL.** Migrations define the shop and seed two logins, three suppliers, forty products and four orders, one in each status. Sessions and roles let staff count and receive stock and give managers the orders and product edits.
 
-### What the project server gave the agent
+## Why Elements
 
-The project server runs alongside the agent and answers as soon as a file is saved: it type-checks the templates, TypeScript and SQL, applies migrations and reruns the tests, so every question came back right away and the agent kept building.
-
-### What shipped
-
-The app type-checks with zero errors and all 33 tests pass. Every page works on desktop and phone.
-
-## Demo accounts
-
-The seed creates three suppliers (Cedar & Pine Home Goods, Brightline
-Electrical Co., Harbor Pantry Wholesale), forty products with twelve at or
-under their reorder point and one out of stock, a movement history for each
-product, and four purchase orders: one draft, one sent, one partially received
-and one received. It also creates two accounts. Both passwords are
-`pallet-demo`, and the sign-in page lists them.
-
-| Email                 | Role    |
-| --------------------- | ------- |
-| maya@pallethaven.shop | manager |
-| leo@pallethaven.shop  | staff   |
-
-In development, supplier and digest emails are written to the job log, not
-sent. To send them, set `EMAIL_LIVE=true` and your SMTP settings in
-`config/env/production.env`, and change the sender address in `config.jsoc`.
-
-**Demo:** [Pallethaven](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782)
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+Elements is an integrated full-stack app framework and a project server. The project server checks the agent's work as it builds: it type-checks the server and browser code, analyzes the program, applies migrations and runs the tests, then reports the results to the agent. A security mistake, such as calling a server-only function from the browser, is a compile error. The agent reads the report and fixes its own mistakes before it tells you a feature is done. The same checks run on every feature you ask for next.
