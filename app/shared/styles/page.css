@@ -86,7 +86,7 @@
   color: var(--ink-faint);
 }
 
-.tab.is-active .tab-count {
+.tab[data-state="active"] .tab-count {
   color: var(--ink-soft);
 }
 
