@@ -1,5 +1,8 @@
 import "./style.css";
 import { redirect, session } from "@elements/app";
+import { Badge } from "@elements/ui/badge";
+import { Button } from "@elements/ui/button";
+import { Toaster } from "@elements/ui/toast";
 import { signout } from "#app/shared/services/auth";
 
 function onSignout() {
@@ -30,10 +33,10 @@ function onSignout() {
 
         <div class="topbar-user row">
           <span class="topbar-name">{session.get("userName")}</span>
-          <span class={["pill", session.get("role") === "manager" && "is-accent"]}>
+          <Badge variant={session.get("role") === "manager" ? "accent" : "secondary"}>
             {session.get("role") === "manager" ? "Manager" : "Staff"}
-          </span>
-          <button class="is-ghost is-sm" onclick={() => onSignout()}>Sign out</button>
+          </Badge>
+          <Button variant="ghost" size="sm" onclick={() => onSignout()}>Sign out</Button>
         </div>
       </div>
     </header>
@@ -41,5 +44,7 @@ function onSignout() {
     <main class="layout-main">
       <slot/>
     </main>
+
+    <Toaster richColors />
   </div>
 </Layout>
