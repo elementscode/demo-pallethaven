@@ -121,6 +121,7 @@ function columns(width: Width): DataTableColumn[] {
       header: "Product",
       rowHeader: true,
       wrap: true,
+      size: phone(width, 98),
       cell: (row) => ({
         text: (row as Product).name,
         href: `/products/${(row as Product).id}`,
@@ -129,11 +130,12 @@ function columns(width: Width): DataTableColumn[] {
     },
     { key: "supplierName", header: "Supplier" },
     { id: "cost", header: "Cost", align: "end", value: (row) => formatMoney((row as Product).costCents) },
-    { key: "onHand", header: "On hand", type: "number" },
-    { key: "reorderPoint", header: "Reorder at", type: "number" },
+    { key: "onHand", header: "On hand", type: "number", size: phone(width, 80) },
+    { key: "reorderPoint", header: "Reorder at", type: "number", size: phone(width, 93) },
     {
       id: "status",
       header: "Status",
+      size: phone(width, 87),
       value: (row) => stockLabel(row as Product),
       cell: (row) => ({ text: stockLabel(row as Product), tone: stockTone(row as Product) }),
     },
@@ -153,9 +155,9 @@ function hiddenColumns(width: Width): string[] {
   }
 }
 
-/** Phones: fixed widths so all four columns fit, the product name wrapping. */
-function columnSizes(width: Width): Record<string, number> {
-  return width === "phone" ? { name: 98, onHand: 80, reorderPoint: 93, status: 87 } : {};
+/** A column's width on phones, where every shown column is sized to fit the screen. */
+function phone(width: Width, px: number): number | undefined {
+  return width === "phone" ? px : undefined;
 }
 
 function rowTone(row: Product): string {
@@ -265,7 +267,6 @@ function rowTone(row: Product): string {
                      data={visible(products, state)}
                      columns={columns(viewport.width)}
                      hidden={hiddenColumns(viewport.width)}
-                     sizes={columnSizes(viewport.width)}
                      label="Stock"
                      rowId={(row) => (row as Product).id}
                      rowTone={(row) => rowTone(row as Product)}
