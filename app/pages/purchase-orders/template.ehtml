@@ -1,8 +1,15 @@
 import "./style.css";
 import { LiveView, redirect, session } from "@elements/app";
+import { Alert } from "@elements/ui/alert";
+import { Button } from "@elements/ui/button";
+import { DataTable, DataTableColumn } from "@elements/ui/data-table";
+import { Empty } from "@elements/ui/empty";
+import { NativeSelect } from "@elements/ui/native-select";
+import { Tabs, TabsList, TabsTrigger } from "@elements/ui/tabs";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
 import { formatDay } from "#app/shared/lib/format";
+import { Viewport, Width, watchWidth } from "#app/shared/lib/viewport";
 import { Product, formatMoney, isLow } from "#app/shared/services/inventory";
 import {
   PoStatus,
@@ -10,7 +17,7 @@ import {
   STATUS_LABELS,
   createPurchaseOrder,
   poNumber,
-  statusIntent,
+  statusVariant,
 } from "#app/shared/services/purchasing";
 
 export interface SupplierOption {
@@ -50,8 +57,8 @@ function lowCount(products: LiveView<Product>, supplierId: string): number {
   return products.filter((p) => p.supplierId === supplierId && isLow(p)).length;
 }
 
-function receivedPercent(o: PurchaseOrder): number {
-  return o.unitsOrdered === 0 ? 0 : Math.round((o.unitsReceived / o.unitsOrdered) * 100);
+function supplierOptions(suppliers: SupplierOption[], products: LiveView<Product>): { value: string; label: string }[] {
+  return suppliers.map((s) => ({ value: s.id, label: `${s.name} (${lowCount(products, s.id)} low)` }));
 }
 
 function onCreate(form: NewOrder) {
@@ -66,12 +73,56 @@ function onCreate(form: NewOrder) {
   }
 }
 
+const COLUMNS: DataTableColumn[] = [
+  {
+    id: "order",
+    header: "Order",
+    rowHeader: true,
+    value: (row) => poNumber((row as PurchaseOrder).number),
+    cell: (row) => ({ text: poNumber((row as PurchaseOrder).number), href: `/purchase-orders/${(row as PurchaseOrder).id}`, mono: true }),
+  },
+  { key: "supplierName", header: "Supplier" },
+  {
+    id: "status",
+    header: "Status",
+    value: (row) => STATUS_LABELS[(row as PurchaseOrder).status],
+    cell: (row) => ({ text: STATUS_LABELS[(row as PurchaseOrder).status], tone: statusVariant((row as PurchaseOrder).status) }),
+  },
+  { key: "lineCount", header: "Lines", type: "number" },
+  { id: "total", header: "Total", align: "end", value: (row) => formatMoney((row as PurchaseOrder).totalCents) },
+  {
+    id: "received",
+    header: "Received",
+    cell: (row) => {
+      let o = row as PurchaseOrder;
+
+      if (o.status === "draft") {
+        return { text: "Not sent", muted: true };
+      }
+
+      return { text: `${o.unitsReceived}/${o.unitsOrdered}`, progress: o.unitsOrdered === 0 ? 0 : o.unitsReceived / o.unitsOrdered };
+    },
+  },
+  {
+    id: "created",
+    header: "Created",
+    value: (row) => formatDay((row as PurchaseOrder).createdAt),
+    cell: (row) => ({ text: formatDay((row as PurchaseOrder).createdAt), description: (row as PurchaseOrder).createdByName }),
+  },
+];
+
+function hiddenColumns(width: Width): string[] {
+  return width === "wide" ? [] : ["supplierName", "lineCount", "received", "created"];
+}
+
 <html lang="en" class="page-purchase-orders" (
   orders: LiveView<PurchaseOrder>,
   products: LiveView<Product>,
   suppliers: SupplierOption[],
   private state: ListState = { filter: "all" as Filter },
   private form: NewOrder = { supplierId: suppliers[0]?.id ?? "", error: "", busy: false },
+  private viewport: Viewport = { width: "wide" },
+  private release: () => void = () => {},
 )>
   <head>
     <title>Purchase orders · Pallethaven</title>
@@ -87,77 +138,40 @@ function onCreate(form: NewOrder) {
           </div>
 
           <form e:if={session.get("role") === "manager"} class="new-po row" onsubmit={() => onCreate(form)}>
-            <select value={form.supplierId} aria-label="Supplier for the new order">
-              <option e:for={s of suppliers} value={s.id}>
-                {s.name} ({lowCount(products, s.id)} low)
-              </option>
-            </select>
-            <button type="submit" class="is-primary" disabled={form.busy}>New order</button>
+            <NativeSelect value={form.supplierId}
+                          options={supplierOptions(suppliers, products)}
+                          attrs={{ "aria-label": "Supplier for the new order" }} />
+            <Button type="submit" variant="primary" loading={form.busy}>New order</Button>
           </form>
         </div>
 
-        <p e:if={form.error} class="error" role="alert">{form.error}</p>
+        <Alert e:if={form.error} variant="danger" description={form.error} />
 
-        <div class="stack is-md">
+        <div class="stack is-md" oninsert={() => release = watchWidth(viewport)} onremove={() => release()}>
           <div class="toolbar">
-            <div class="tab-list" role="tablist">
-              <button e:for={f of FILTERS}
-                      role="tab"
-                      class={["tab", state.filter === f && "is-active"]}
-                      onclick={() => state.filter = f}>
-                {filterLabel(f)}<span class="tab-count">{countFor(orders, f)}</span>
-              </button>
-            </div>
+            <Tabs value={state.filter} onValueChange={(v) => state.filter = v as Filter}>
+              <TabsList label="Order status">
+                <TabsTrigger e:for={f of FILTERS} value={f}>
+                  {filterLabel(f)}<span class="tab-count">{countFor(orders, f)}</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          <div class="table-wrap">
-            <table class="data-table po-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th class="col-supplier">Supplier</th>
-                  <th>Status</th>
-                  <th class="num col-lines">Lines</th>
-                  <th class="num">Total</th>
-                  <th class="progress-cell">Received</th>
-                  <th class="col-created">Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr e:for={o of visible(orders, state.filter)}>
-                  <td>
-                    <a class="row-link po-number" href={`/purchase-orders/${o.id}`}>{poNumber(o.number)}</a>
-                    <div class="po-supplier-sub">{o.supplierName}</div>
-                  </td>
-                  <td class="col-supplier">{o.supplierName}</td>
-                  <td>
-                    <span class={["pill", "status-pill", statusIntent(o.status)]}>
-                      <span class="pill-dot"></span>
-                      {STATUS_LABELS[o.status]}
-                    </span>
-                  </td>
-                  <td class="num col-lines">{o.lineCount}</td>
-                  <td class="num">{formatMoney(o.totalCents)}</td>
-                  <td class="progress-cell">
-                    <div e:if={o.status !== "draft"} class="receive-progress">
-                      <div class="receive-track">
-                        <div class="receive-fill" style={{ width: `${receivedPercent(o)}%` }}></div>
-                      </div>
-                      <span>{o.unitsReceived}/{o.unitsOrdered}</span>
-                    </div>
-                    <span e:else class="po-sub">Not sent</span>
-                  </td>
-                  <td class="col-created">
-                    <div>{formatDay(o.createdAt)}</div>
-                    <div class="po-sub">{o.createdByName}</div>
-                  </td>
-                </tr>
-                <tr e:if={visible(orders, state.filter).length === 0} class="empty-row">
-                  <td colspan="7">No {state.filter === "all" ? "" : filterLabel(state.filter).toLowerCase()} orders.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={visible(orders, state.filter)}
+                     columns={COLUMNS}
+                     label="Purchase orders"
+                     rowId={(row) => (row as PurchaseOrder).id}
+                     hidden={hiddenColumns(viewport.width)}
+                     toolbar={false}
+                     footer={false}
+                     pagination={false}
+                     sortable={false}
+                     columnMenu={false}
+                     resizable={false}
+                     reorderable={false}>
+            <Empty slot="empty" title={`No ${state.filter === "all" ? "" : filterLabel(state.filter).toLowerCase()} orders.`} />
+          </DataTable>
         </div>
       </div>
     </Layout>

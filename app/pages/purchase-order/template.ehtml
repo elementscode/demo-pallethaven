@@ -1,5 +1,6 @@
 import "./style.css";
 import { LiveView, redirect, session } from "@elements/app";
+import { Badge } from "@elements/ui/badge";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
 import { formatWhen } from "#app/shared/lib/format";
@@ -17,7 +18,7 @@ import {
   removeLine,
   sendPurchaseOrder,
   setLineQuantity,
-  statusIntent,
+  statusVariant,
   suggestedQuantity,
 } from "#app/shared/services/purchasing";
 
@@ -176,10 +177,7 @@ function onReceive(state: LineState, line: PoLine) {
           <div class="page-head">
             <div class="po-title row">
               <h1>{poNumber(order.number)}</h1>
-              <span class={["pill", statusIntent(order.status)]}>
-                <span class="pill-dot"></span>
-                {STATUS_LABELS[order.status]}
-              </span>
+              <Badge variant={statusVariant(order.status)} dot>{STATUS_LABELS[order.status]}</Badge>
             </div>
 
             <div class="po-actions cluster">

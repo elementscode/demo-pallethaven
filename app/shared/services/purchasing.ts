@@ -41,19 +41,22 @@ export const STATUS_LABELS: Record<PoStatus, string> = {
   received: "Received",
 };
 
-export function statusIntent(status: PoStatus): string {
+/** The Badge variant a status is drawn in. */
+export type StatusVariant = "outline" | "info" | "warning" | "success";
+
+export function statusVariant(status: PoStatus): StatusVariant {
   switch (status) {
     case "draft":
-      return "";
+      return "outline";
 
     case "sent":
-      return "is-info";
+      return "info";
 
     case "partially_received":
-      return "is-warning";
+      return "warning";
 
     case "received":
-      return "is-success";
+      return "success";
   }
 }
 

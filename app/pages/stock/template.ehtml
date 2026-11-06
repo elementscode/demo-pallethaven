@@ -12,6 +12,7 @@ import { NumberInput } from "@elements/ui/number-input";
 import { Tabs, TabsList, TabsTrigger } from "@elements/ui/tabs";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
+import { Viewport, Width, watchWidth } from "#app/shared/lib/viewport";
 import { Product, NewProduct, createProduct, formatMoney, isLow } from "#app/shared/services/inventory";
 
 export type StockFilter = "all" | "low";
@@ -24,13 +25,6 @@ export interface SupplierOption {
 interface StockState {
   filter: StockFilter;
   search: string;
-}
-
-/** How much room the table has: phones drop columns, as the old table did. */
-type Width = "wide" | "narrow" | "phone";
-
-interface Viewport {
-  width: Width;
 }
 
 interface ProductForm extends NewProduct {
@@ -162,21 +156,6 @@ function hiddenColumns(width: Width): string[] {
 /** Phones: fixed widths so all four columns fit, the product name wrapping. */
 function columnSizes(width: Width): Record<string, number> {
   return width === "phone" ? { name: 124, onHand: 66, reorderPoint: 80, status: 88 } : {};
-}
-
-function watchWidth(viewport: Viewport): () => void {
-  let narrow = matchMedia("(max-width: 48rem)");
-  let phone = matchMedia("(max-width: 30rem)");
-  let update = () => viewport.width = phone.matches ? "phone" : narrow.matches ? "narrow" : "wide";
-
-  update();
-  narrow.addEventListener("change", update);
-  phone.addEventListener("change", update);
-
-  return () => {
-    narrow.removeEventListener("change", update);
-    phone.removeEventListener("change", update);
-  };
 }
 
 function rowTone(row: Product): string {
