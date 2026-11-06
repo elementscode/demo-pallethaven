@@ -202,8 +202,7 @@ function markPercent(p: Product): number {
             <Card title="Adjust stock" level={2}>
               <form onsubmit={() => onAdjust(form, product)}>
                 <CardContent class="stack">
-                  <ToggleGroup class="reason-picker"
-                               value={form.reason}
+                  <ToggleGroup value={form.reason}
                                variant="outline"
                                size="sm"
                                label="Reason"
@@ -261,7 +260,7 @@ function markPercent(p: Product): number {
             </Card>
           </div>
 
-          <Card title="Movement history" level={2} class="history-card">
+          <Card title="Movement history" level={2}>
             <Table label="Movement history" class="history-table">
               <table>
                 <thead>

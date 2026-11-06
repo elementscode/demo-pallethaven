@@ -197,7 +197,7 @@ function rowTone(row: Product): string {
           </Button>
         </div>
 
-        <Card e:if={form.open} title="New product" level={2} class="new-product">
+        <Card e:if={form.open} title="New product" level={2}>
           <form onsubmit={() => onCreate(form)}>
             <CardContent class="stack">
               <Alert e:if={form.error} variant="danger" description={form.error} />
@@ -263,8 +263,7 @@ function rowTone(row: Product): string {
                    attrs={{ "aria-label": "Search products" }} />
           </div>
 
-          <DataTable class="stock-table"
-                     data={visible(products, state)}
+          <DataTable data={visible(products, state)}
                      columns={columns(viewport.width)}
                      hidden={hiddenColumns(viewport.width)}
                      label="Stock"
