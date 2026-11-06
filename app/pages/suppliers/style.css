@@ -6,7 +6,7 @@
   gap: var(--space-5);
 }
 
-.supplier-card .card-body {
+.supplier-body {
   display: grid;
   gap: var(--space-4);
 }
@@ -45,12 +45,12 @@
   color: var(--warning);
 }
 
-.supplier-card .card-foot {
+.supplier-foot {
   justify-content: space-between;
 }
 
 .supplier-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-1) var(--space-4);
 }

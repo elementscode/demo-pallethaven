@@ -1,5 +1,10 @@
 import "./style.css";
 import { LiveView, session, sql, ValidationError } from "@elements/app";
+import { Alert } from "@elements/ui/alert";
+import { Button } from "@elements/ui/button";
+import { Card, CardContent, CardFooter } from "@elements/ui/card";
+import { Field } from "@elements/ui/field";
+import { Input } from "@elements/ui/input";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
 import { requireManager } from "#app/shared/services/auth";
@@ -114,22 +119,21 @@ function openCount(orders: LiveView<PurchaseOrder>, id: string): number {
             <h1>Suppliers</h1>
             <p class="page-sub">Where stock comes from, and where purchase orders are emailed.</p>
           </div>
-          <button e:if={session.get("role") === "manager" && !ui.adding}
-                  class="is-primary"
+          <Button e:if={session.get("role") === "manager" && !ui.adding}
+                  variant="primary"
                   onclick={() => { form = blankForm(); ui.editing = ""; ui.adding = true; }}>
             Add supplier
-          </button>
+          </Button>
         </div>
 
-        <div e:if={ui.adding} class="card">
-          <div class="card-head"><h2>New supplier</h2></div>
+        <Card e:if={ui.adding} title="New supplier" level={2}>
           <SupplierFields {form} {list} {ui} />
-        </div>
+        </Card>
 
         <div class="supplier-grid">
-          <div e:for={s of list.value} class="card supplier-card">
+          <Card e:for={s of list.value} class="supplier-card">
             <SupplierFields e:if={ui.editing === s.id} {form} {list} {ui} />
-            <div e:else class="card-body">
+            <CardContent e:else class="supplier-body">
               <div class="stack is-xs">
                 <h2 class="supplier-name">{s.name}</h2>
                 <div class="supplier-contact">
@@ -151,15 +155,16 @@ function openCount(orders: LiveView<PurchaseOrder>, id: string): number {
                   <div class="num-value">{openCount(orders, s.id)}</div>
                 </div>
               </div>
-            </div>
-            <div e:if={session.get("role") === "manager" && ui.editing !== s.id} class="card-foot">
+            </CardContent>
+            <CardFooter e:if={session.get("role") === "manager" && ui.editing !== s.id} class="supplier-foot">
               <a href="/purchase-orders">Purchase orders</a>
-              <button class="is-sm is-ghost"
+              <Button variant="ghost"
+                      size="sm"
                       onclick={() => { onEdit(form, s); ui.adding = false; ui.editing = s.id; }}>
                 Edit
-              </button>
-            </div>
-          </div>
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </Layout>
@@ -172,26 +177,23 @@ function openCount(orders: LiveView<PurchaseOrder>, id: string): number {
   ui: { adding: boolean; editing: string },
 )>
   <form onsubmit={() => onSave(form, list, ui)}>
-    <div class="card-body stack">
-      <p e:if={form.error} class="error" role="alert">{form.error}</p>
+    <CardContent class="stack">
+      <Alert e:if={form.error} variant="danger" description={form.error} />
       <div class="supplier-form-grid">
-        <div class="field">
-          <label for={`sup-name-${form.id}`}>Name</label>
-          <input id={`sup-name-${form.id}`} value={form.name} required>
-        </div>
-        <div class="field">
-          <label for={`sup-contact-${form.id}`}>Contact</label>
-          <input id={`sup-contact-${form.id}`} value={form.contactName} placeholder="Who you order from">
-        </div>
-        <div class="field">
-          <label for={`sup-email-${form.id}`}>Email</label>
-          <input id={`sup-email-${form.id}`} type="email" value={form.email} autocapitalize="none" spellcheck={false} required>
-        </div>
+        <Field label="Name" required>
+          <Input value={form.name} />
+        </Field>
+        <Field label="Contact">
+          <Input value={form.contactName} placeholder="Who you order from" />
+        </Field>
+        <Field label="Email" required>
+          <Input type="email" value={form.email} attrs={{ autocapitalize: "none", spellcheck: "false" }} />
+        </Field>
       </div>
-    </div>
-    <div class="card-foot">
-      <button type="button" class="is-ghost" onclick={() => { ui.adding = false; ui.editing = ""; }}>Cancel</button>
-      <button type="submit" class="is-primary">{form.id ? "Save" : "Add supplier"}</button>
-    </div>
+    </CardContent>
+    <CardFooter>
+      <Button variant="ghost" onclick={() => { ui.adding = false; ui.editing = ""; }}>Cancel</Button>
+      <Button type="submit" variant="primary">{form.id ? "Save" : "Add supplier"}</Button>
+    </CardFooter>
   </form>
 </SupplierFields>
