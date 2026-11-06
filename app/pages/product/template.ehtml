@@ -1,5 +1,16 @@
 import "./style.css";
 import { LiveView, session } from "@elements/app";
+import { Alert } from "@elements/ui/alert";
+import { Badge } from "@elements/ui/badge";
+import { Button } from "@elements/ui/button";
+import { Card, CardContent, CardFooter } from "@elements/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@elements/ui/field";
+import { Input } from "@elements/ui/input";
+import { NativeSelect } from "@elements/ui/native-select";
+import { NumberInput } from "@elements/ui/number-input";
+import { Table, TableCell, TableHead } from "@elements/ui/table";
+import { toast } from "@elements/ui/toast";
+import { ToggleGroup, ToggleGroupItem } from "@elements/ui/toggle-group";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
 import { formatWhen } from "#app/shared/lib/format";
@@ -32,7 +43,6 @@ interface AdjustForm {
   quantity: number;
   note: string;
   error: string;
-  saved: string;
   busy: boolean;
 }
 
@@ -64,8 +74,8 @@ export function projected(onHand: number, form: { reason: Reason; quantity: numb
   return form.reason === "count" ? quantity : onHand - quantity;
 }
 
-function emptyAdjust(reason: Reason = "count"): AdjustForm {
-  return { reason, quantity: 0, note: "", error: "", saved: "", busy: false };
+function emptyAdjust(onHand: number): AdjustForm {
+  return { reason: "count", quantity: onHand, note: "", error: "", busy: false };
 }
 
 function onReason(form: AdjustForm, product: Product, reason: Reason) {
@@ -80,12 +90,11 @@ function onAdjust(form: AdjustForm, product: Product) {
 
   try {
     adjustStock({ productId: product.id, reason: form.reason, quantity: form.quantity, note: form.note });
-    form.saved = `${MOVEMENT_LABELS[form.reason]} recorded.`;
+    toast.success(`${MOVEMENT_LABELS[form.reason]} recorded.`);
     form.note = "";
     form.quantity = form.reason === "count" ? product.onHand : 1;
   } catch (err: any) {
     form.error = err.message;
-    form.saved = "";
   }
 
   form.busy = false;
@@ -133,7 +142,7 @@ function markPercent(p: Product): number {
   movements: LiveView<StockMovement>,
   suppliers: SupplierOption[],
   onOrder: OnOrder[],
-  private form: AdjustForm = emptyAdjust(),
+  private form: AdjustForm = emptyAdjust(products.at(0)?.onHand ?? 0),
   private edit: EditForm = { open: false, name: "", supplierId: "", cost: "", reorderPoint: 0, error: "" },
 )>
   <head>
@@ -142,7 +151,7 @@ function markPercent(p: Product): number {
   </head>
   <body>
     <Layout active="stock">
-      <div e:for={product of products} class="stack is-xl" oninit={() => form.quantity = product.onHand}>
+      <div e:for={product of products} class="stack is-xl">
         <div class="stack is-sm">
           <a class="crumb" href="/">← Stock</a>
           <div class="product-title">
@@ -157,8 +166,8 @@ function markPercent(p: Product): number {
 
         <div class="product-grid">
           <div class="stack is-lg">
-            <div class="card">
-              <div class="card-body stack">
+            <Card>
+              <CardContent class="stack">
                 <div class="level">
                   <div>
                     <div class="level-label">On hand</div>
@@ -176,9 +185,9 @@ function markPercent(p: Product): number {
                   </div>
                 </div>
                 <div class="cluster is-sm">
-                  <span e:if={product.onHand === 0} class="pill is-danger"><span class="pill-dot"></span>Out of stock</span>
-                  <span e:elseif={isLow(product)} class="pill is-warning"><span class="pill-dot"></span>At or under reorder point</span>
-                  <span e:else class="pill is-success"><span class="pill-dot"></span>In stock</span>
+                  <Badge e:if={product.onHand === 0} variant="danger" dot>Out of stock</Badge>
+                  <Badge e:elseif={isLow(product)} variant="warning" dot>At or under reorder point</Badge>
+                  <Badge e:else variant="success" dot>In stock</Badge>
                 </div>
                 <p e:if={onOrder.length > 0} class="on-order">
                   On order:
@@ -186,100 +195,87 @@ function markPercent(p: Product): number {
                     <a href={`/purchase-orders/${o.purchaseOrderId}`}>{o.remaining} on {poNumber(o.number)}</a>
                   </span>
                 </p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div class="card">
-              <div class="card-head"><h2>Adjust stock</h2></div>
+            <Card title="Adjust stock" level={2}>
               <form onsubmit={() => onAdjust(form, product)}>
-                <div class="card-body stack">
-                  <div class="reason-picker" role="radiogroup" aria-label="Reason">
-                    <button e:for={r of REASONS}
-                            type="button"
-                            role="radio"
-                            aria-checked={form.reason === r.value}
-                            class={["is-sm", form.reason === r.value && "is-active"]}
-                            onclick={() => onReason(form, product, r.value)}>
-                      {r.label}
-                    </button>
-                  </div>
+                <CardContent class="stack">
+                  <ToggleGroup class="reason-picker"
+                               value={form.reason}
+                               variant="outline"
+                               size="sm"
+                               label="Reason"
+                               onValueChange={(v, details) => v ? onReason(form, product, v as Reason) : details.cancel()}>
+                    <ToggleGroupItem e:for={r of REASONS} value={r.value}>{r.label}</ToggleGroupItem>
+                  </ToggleGroup>
 
-                  <div class="field">
-                    <label for="adj-qty">{form.reason === "count" ? "Counted on the shelf" : "Units removed"}</label>
-                    <input id="adj-qty" type="number" min="0" inputmode="numeric" value={form.quantity} required>
-                    <p class="hint">
+                  <Field label={form.reason === "count" ? "Counted on the shelf" : "Units removed"} required>
+                    <NumberInput value={form.quantity} min={0} />
+                    <FieldDescription>
                       On hand goes from {product.onHand} to <strong>{projected(product.onHand, form)}</strong>.
-                    </p>
-                  </div>
+                    </FieldDescription>
+                  </Field>
 
-                  <div class="field">
-                    <label for="adj-note">Note <span class="hint">optional</span></label>
-                    <input id="adj-note" value={form.note} placeholder={form.reason === "damage" ? "What happened?" : ""}>
-                  </div>
+                  <Field>
+                    <FieldLabel>Note <span class="hint">optional</span></FieldLabel>
+                    <Input value={form.note} placeholder={form.reason === "damage" ? "What happened?" : ""} />
+                  </Field>
 
-                  <p e:if={form.error} class="error" role="alert">{form.error}</p>
-                  <p e:elseif={form.saved} class="hint" role="status">{form.saved}</p>
+                  <Alert e:if={form.error} variant="danger" description={form.error} />
 
-                  <button type="submit" class="is-primary is-block" disabled={form.busy}>
+                  <Button type="submit" variant="primary" block loading={form.busy}>
                     Record {form.reason === "count" ? "count" : form.reason}
-                  </button>
-                </div>
+                  </Button>
+                </CardContent>
               </form>
-            </div>
+            </Card>
 
-            <div e:if={session.get("role") === "manager"} class="card">
-              <div class="card-head"><h2>Details</h2></div>
-              <div e:if={!edit.open} class="card-body stack is-sm">
+            <Card e:if={session.get("role") === "manager"} title="Details" level={2}>
+              <CardContent e:if={!edit.open} class="stack is-sm">
                 <p class="card-note">Name, supplier, unit cost and reorder point.</p>
-                <button class="is-sm" onclick={() => openEdit(edit, product)}>Edit details</button>
-              </div>
+                <Button size="sm" onclick={() => openEdit(edit, product)}>Edit details</Button>
+              </CardContent>
               <form e:else onsubmit={() => onSaveEdit(edit, product)}>
-                <div class="card-body stack">
-                  <p e:if={edit.error} class="error" role="alert">{edit.error}</p>
-                  <div class="field">
-                    <label for="ed-name">Name</label>
-                    <input id="ed-name" value={edit.name} required>
-                  </div>
-                  <div class="field">
-                    <label for="ed-supplier">Supplier</label>
-                    <select id="ed-supplier" value={edit.supplierId}>
-                      <option e:for={s of suppliers} value={s.id}>{s.name}</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="ed-cost">Unit cost</label>
-                    <input id="ed-cost" value={edit.cost} inputmode="decimal" required>
-                  </div>
-                  <div class="field">
-                    <label for="ed-reorder">Reorder point</label>
-                    <input id="ed-reorder" type="number" min="0" value={edit.reorderPoint}>
-                  </div>
-                </div>
-                <div class="card-foot">
-                  <button type="button" class="is-ghost" onclick={() => edit.open = false}>Cancel</button>
-                  <button type="submit" class="is-primary">Save</button>
-                </div>
+                <CardContent class="stack">
+                  <Alert e:if={edit.error} variant="danger" description={edit.error} />
+                  <Field label="Name" required>
+                    <Input value={edit.name} />
+                  </Field>
+                  <Field label="Supplier">
+                    <NativeSelect value={edit.supplierId} block options={suppliers.map((s) => ({ value: s.id, label: s.name }))} />
+                  </Field>
+                  <Field label="Unit cost" required>
+                    <Input value={edit.cost} attrs={{ inputmode: "decimal" }} />
+                  </Field>
+                  <Field label="Reorder point">
+                    <NumberInput value={edit.reorderPoint} min={0} />
+                  </Field>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="ghost" onclick={() => edit.open = false}>Cancel</Button>
+                  <Button type="submit" variant="primary">Save</Button>
+                </CardFooter>
               </form>
-            </div>
+            </Card>
           </div>
 
-          <div class="card history-card">
-            <div class="card-head"><h2>Movement history</h2></div>
-            <div class="card-body">
-              <table class="history-table">
+          <Card title="Movement history" level={2} class="history-card">
+            <Table label="Movement history" class="history-table">
+              <table>
                 <thead>
                   <tr>
-                    <th>When</th>
-                    <th>Reason</th>
-                    <th class="num">Change</th>
-                    <th class="num">After</th>
-                    <th class="col-by">By</th>
+                    <TableHead>When</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead align="end">Change</TableHead>
+                    <TableHead align="end">After</TableHead>
+                    <TableHead class="col-by">By</TableHead>
                   </tr>
                 </thead>
                 <tbody>
                   <tr e:for={m of movements}>
-                    <td class="when">{formatWhen(m.createdAt)}</td>
-                    <td>
+                    <TableCell class="when">{formatWhen(m.createdAt)}</TableCell>
+                    <TableCell class="reason">
                       <div>
                         {MOVEMENT_LABELS[m.reason]}
                         <a e:if={m.purchaseOrderId && m.purchaseOrderNumber}
@@ -288,20 +284,20 @@ function markPercent(p: Product): number {
                         </a>
                       </div>
                       <div e:if={m.note} class="note">{m.note}</div>
-                    </td>
-                    <td class={["num", "delta", m.delta > 0 && "is-up", m.delta < 0 && "is-down"]}>
+                    </TableCell>
+                    <TableCell align="end" class={["delta", m.delta > 0 && "is-up", m.delta < 0 && "is-down"].filter(Boolean).join(" ")}>
                       {m.delta > 0 ? `+${m.delta}` : m.delta === 0 ? "±0" : `${m.delta}`}
-                    </td>
-                    <td class="num">{m.quantityAfter}</td>
-                    <td class="col-by note">{m.userName}</td>
+                    </TableCell>
+                    <TableCell align="end">{m.quantityAfter}</TableCell>
+                    <TableCell class="col-by note">{m.userName}</TableCell>
                   </tr>
                 </tbody>
               </table>
-            </div>
-            <div e:if={movements.hasMore} class="card-foot history-more">
-              <button class="is-sm is-ghost" onclick={() => movements.more()}>Show older</button>
-            </div>
-          </div>
+            </Table>
+            <CardFooter e:if={movements.hasMore} class="history-more">
+              <Button variant="ghost" size="sm" onclick={() => movements.more()}>Show older</Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     </Layout>
