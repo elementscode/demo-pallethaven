@@ -4,6 +4,8 @@
 
 > Pallethaven is a full-stack app built with Claude Code on Elements.
 
+Pallethaven uses the `dashboard` theme from @elements/ui.
+
 Stock levels with low-stock flags and movement history, purchase orders emailed to suppliers and received line by line, all live.
 
 [Run this app on your machine](https://elements.dev/demos/01a0f3a8-b040-7715-93c5-0e3201d37782). Use this demo as inspiration, or as the starting point for your own app. Your agent creates a new app with this one as the scaffold, and you prompt it to add whatever features you want.
