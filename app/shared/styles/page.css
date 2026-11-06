@@ -8,7 +8,7 @@
   margin: 0;
 }
 
-/* Shared by the signed-in pages: the heading row and the bordered data table. */
+/* Shared by the signed-in pages: the heading row and the filter row. */
 .page-head {
   display: flex;
   flex-wrap: wrap;
@@ -25,48 +25,6 @@
 
 .page-sub {
   margin: var(--space-1) 0 0;
-  color: var(--ink-soft);
-}
-
-.table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-xl);
-  background: var(--bg);
-}
-
-.data-table {
-  margin: 0;
-}
-
-.data-table th,
-.data-table td {
-  padding: var(--space-3) var(--space-4);
-  vertical-align: middle;
-}
-
-.data-table thead th {
-  background: var(--bg-soft);
-  font-size: var(--text-xs);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.data-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.data-table .sku {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.data-table .empty-row td {
-  padding: var(--space-12) var(--space-4);
-  text-align: center;
   color: var(--ink-soft);
 }
 
@@ -98,18 +56,8 @@
   gap: var(--space-3) var(--space-6);
 }
 
-.toolbar .tab-list {
-  border-bottom: 0;
-}
-
-.toolbar .tab-list {
+.toolbar .tabs {
   max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.toolbar .tab {
-  white-space: nowrap;
 }
 
 /* Phones: a row's link and the back link get a 40px tap area without moving

@@ -82,6 +82,12 @@
   font-weight: var(--weight-semibold);
 }
 
+.lines-table td.sku {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+}
+
 .lines-table .qty-input {
   width: 5.5rem;
   margin-left: auto;
