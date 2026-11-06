@@ -1,5 +1,11 @@
 import "./style.css";
 import { redirect } from "@elements/app";
+import { Alert } from "@elements/ui/alert";
+import { Badge } from "@elements/ui/badge";
+import { Button } from "@elements/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@elements/ui/card";
+import { Field } from "@elements/ui/field";
+import { Input } from "@elements/ui/input";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { signin } from "#app/shared/services/auth";
 
@@ -62,53 +68,43 @@ function onUseLogin(form: SigninForm, login: DemoLogin) {
           <p class="signin-tagline">Stock, suppliers and purchase orders for the warehouse.</p>
         </div>
 
-        <div class="card">
-          <div class="card-body">
+        <Card>
+          <CardContent>
             <form class="stack" onsubmit={() => onSubmit(form)}>
-              <p e:if={form.error} class="error" role="alert">{form.error}</p>
+              <Alert e:if={form.error} variant="danger" description={form.error} />
 
-              <div class="field">
-                <label for="email">Email</label>
-                <input id="email"
+              <Field label="Email" required>
+                <Input type="email"
                        name="email"
-                       type="email"
                        value={form.email}
-                       autocomplete="email"
-                       autocapitalize="none"
-                       spellcheck={false}
                        placeholder="you@pallethaven.shop"
-                       required>
-              </div>
+                       attrs={{ autocomplete: "email", autocapitalize: "none", spellcheck: "false" }} />
+              </Field>
 
-              <div class="field">
-                <label for="password">Password</label>
-                <input id="password"
+              <Field label="Password" required>
+                <Input type="password"
                        name="password"
-                       type="password"
                        value={form.password}
-                       autocomplete="current-password"
-                       required>
-              </div>
+                       attrs={{ autocomplete: "current-password" }} />
+              </Field>
 
-              <button type="submit" class="is-primary is-block" disabled={form.busy}>
-                {form.busy ? "Signing in…" : "Sign in"}
-              </button>
+              <Button type="submit" variant="primary" block loading={form.busy}>Sign in</Button>
             </form>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div e:if={demoLogins.length > 0} class="card demo-logins">
-          <div class="card-head">
-            <h2>Demo logins <span class="pill is-sm">seeded</span></h2>
-          </div>
-          <div class="card-body stack">
+        <Card e:if={demoLogins.length > 0} class="demo-logins">
+          <CardHeader>
+            <CardTitle level={2}>Demo logins <Badge variant="outline">seeded</Badge></CardTitle>
+          </CardHeader>
+          <CardContent class="stack">
             <div e:for={login of demoLogins} class="demo-login">
               <span class="demo-login-name">{login.name} · {login.role}</span>
               <span class="demo-login-meta">{login.email} / {login.password}</span>
-              <button class="is-sm" onclick={() => onUseLogin(form, login)}>Sign in</button>
+              <Button size="sm" onclick={() => onUseLogin(form, login)}>Sign in</Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </main>
   </body>
