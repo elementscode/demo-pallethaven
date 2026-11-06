@@ -14,8 +14,9 @@
     --accent: var(--brand-600);
     --accent-deep: var(--brand-700);
     --accent-soft: var(--brand-50);
-    --accent-ink: #ffffff;
+    --accent-ink: var(--brand-50);
     --accent-edge: var(--brand-200);
+    --item-selected: var(--brand-200);
     --link-c: 0.123;
     --link-h: 48;
   }
@@ -29,6 +30,7 @@
       --accent-edge: var(--brand-700);
       --link: var(--accent);
       --focus: var(--accent);
+      --item-selected: var(--accent-soft);
     }
   }
 
@@ -40,6 +42,7 @@
     --accent-edge: var(--brand-700);
     --link: var(--accent);
     --focus: var(--accent);
+    --item-selected: var(--accent-soft);
   }
 
   /* Phones: small controls keep a 40px tap target. */
