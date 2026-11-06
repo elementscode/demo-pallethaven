@@ -275,8 +275,8 @@ function markPercent(p: Product): number {
                 </thead>
                 <tbody>
                   <tr e:for={m of movements}>
-                    <TableCell class="when">{formatWhen(m.createdAt)}</TableCell>
-                    <TableCell class="reason">
+                    <TableCell wrap class="when">{formatWhen(m.createdAt)}</TableCell>
+                    <TableCell wrap>
                       <div>
                         {MOVEMENT_LABELS[m.reason]}
                         <a e:if={m.purchaseOrderId && m.purchaseOrderNumber}

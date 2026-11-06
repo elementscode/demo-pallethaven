@@ -107,7 +107,6 @@
 }
 
 .when {
-  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--ink-soft);
 }
@@ -139,11 +138,6 @@
 
 @media (max-width: 30rem) {
   .history-table .when {
-    white-space: normal;
     min-width: 4.5rem;
-  }
-
-  .history-table .reason {
-    white-space: normal;
   }
 }

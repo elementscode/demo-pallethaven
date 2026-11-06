@@ -257,7 +257,7 @@ function productOptions(products: LiveView<Product>, lines: LiveView<PoLine>, or
             <thead>
               <tr>
                 <TableHead class="sku">SKU</TableHead>
-                <TableHead class="col-product">Product</TableHead>
+                <TableHead wrap>Product</TableHead>
                 <TableHead align="end" class="col-cost">Unit cost</TableHead>
                 <TableHead align="end">Ordered</TableHead>
                 <TableHead align="end">Received</TableHead>
@@ -319,7 +319,7 @@ function productOptions(products: LiveView<Product>, lines: LiveView<PoLine>, or
 )>
   <tr class={["line-row", order.status !== "draft" && line.quantityReceived >= line.quantityOrdered && "is-complete"]}>
     <TableCell class="sku">{line.sku}</TableCell>
-    <TableCell class="col-product"><a class="row-link" href={`/products/${line.productId}`}>{line.name}</a></TableCell>
+    <TableCell wrap><a class="row-link" href={`/products/${line.productId}`}>{line.name}</a></TableCell>
     <TableCell align="end" class="col-cost">{formatMoney(line.unitCostCents)}</TableCell>
     <TableCell align="end">
       <NumberInput e:if={order.status === "draft" && isManager()}

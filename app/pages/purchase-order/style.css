@@ -135,10 +135,6 @@
     display: none;
   }
 
-  .lines-table .col-product {
-    white-space: normal;
-  }
-
   .lines-table .qty-input {
     width: 4rem;
   }
