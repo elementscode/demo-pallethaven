@@ -73,43 +73,50 @@ function onCreate(form: NewOrder) {
   }
 }
 
-const COLUMNS: DataTableColumn[] = [
-  {
-    id: "order",
-    header: "Order",
-    rowHeader: true,
-    value: (row) => poNumber((row as PurchaseOrder).number),
-    cell: (row) => ({ text: poNumber((row as PurchaseOrder).number), href: `/purchase-orders/${(row as PurchaseOrder).id}`, mono: true }),
-  },
-  { key: "supplierName", header: "Supplier" },
-  {
-    id: "status",
-    header: "Status",
-    value: (row) => STATUS_LABELS[(row as PurchaseOrder).status],
-    cell: (row) => ({ text: STATUS_LABELS[(row as PurchaseOrder).status], tone: statusVariant((row as PurchaseOrder).status) }),
-  },
-  { key: "lineCount", header: "Lines", type: "number" },
-  { id: "total", header: "Total", align: "end", value: (row) => formatMoney((row as PurchaseOrder).totalCents) },
-  {
-    id: "received",
-    header: "Received",
-    cell: (row) => {
-      let o = row as PurchaseOrder;
-
-      if (o.status === "draft") {
-        return { text: "Not sent", muted: true };
-      }
-
-      return { text: `${o.unitsReceived}/${o.unitsOrdered}`, progress: o.unitsOrdered === 0 ? 0 : o.unitsReceived / o.unitsOrdered };
+function columns(width: Width): DataTableColumn[] {
+  return [
+    {
+      id: "order",
+      header: "Order",
+      rowHeader: true,
+      value: (row) => poNumber((row as PurchaseOrder).number),
+      cell: (row) => ({
+        text: poNumber((row as PurchaseOrder).number),
+        href: `/purchase-orders/${(row as PurchaseOrder).id}`,
+        mono: true,
+        description: width === "wide" ? undefined : (row as PurchaseOrder).supplierName,
+      }),
     },
-  },
-  {
-    id: "created",
-    header: "Created",
-    value: (row) => formatDay((row as PurchaseOrder).createdAt),
-    cell: (row) => ({ text: formatDay((row as PurchaseOrder).createdAt), description: (row as PurchaseOrder).createdByName }),
-  },
-];
+    { key: "supplierName", header: "Supplier" },
+    {
+      id: "status",
+      header: "Status",
+      value: (row) => STATUS_LABELS[(row as PurchaseOrder).status],
+      cell: (row) => ({ text: STATUS_LABELS[(row as PurchaseOrder).status], tone: statusVariant((row as PurchaseOrder).status) }),
+    },
+    { key: "lineCount", header: "Lines", type: "number" },
+    { id: "total", header: "Total", align: "end", value: (row) => formatMoney((row as PurchaseOrder).totalCents) },
+    {
+      id: "received",
+      header: "Received",
+      cell: (row) => {
+        let o = row as PurchaseOrder;
+
+        if (o.status === "draft") {
+          return { text: "Not sent", muted: true };
+        }
+
+        return { text: `${o.unitsReceived}/${o.unitsOrdered}`, progress: o.unitsOrdered === 0 ? 0 : o.unitsReceived / o.unitsOrdered };
+      },
+    },
+    {
+      id: "created",
+      header: "Created",
+      value: (row) => formatDay((row as PurchaseOrder).createdAt),
+      cell: (row) => ({ text: formatDay((row as PurchaseOrder).createdAt), description: (row as PurchaseOrder).createdByName }),
+    },
+  ];
+}
 
 function hiddenColumns(width: Width): string[] {
   return width === "wide" ? [] : ["supplierName", "lineCount", "received", "created"];
@@ -159,7 +166,7 @@ function hiddenColumns(width: Width): string[] {
           </div>
 
           <DataTable data={visible(orders, state.filter)}
-                     columns={COLUMNS}
+                     columns={columns(viewport.width)}
                      label="Purchase orders"
                      rowId={(row) => (row as PurchaseOrder).id}
                      hidden={hiddenColumns(viewport.width)}
