@@ -82,15 +82,9 @@
   font-weight: var(--weight-semibold);
 }
 
-.lines-table {
-  min-width: 52rem;
-}
-
 .lines-table .qty-input {
-  display: block;
   width: 5.5rem;
   margin-left: auto;
-  text-align: right;
 }
 
 .receive-form {
@@ -109,26 +103,11 @@
   background: color-mix(in oklab, var(--success-soft) 40%, transparent);
 }
 
-.line-error {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-xs);
-  text-align: right;
-}
-
-.lines-table tfoot td {
-  font-weight: var(--weight-semibold);
-  border-top: 1px solid var(--rule);
-}
-
 .add-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 6rem auto;
   gap: var(--space-2);
   align-items: end;
-}
-
-.low-note {
-  color: var(--warning);
 }
 
 @media (max-width: 48rem) {
@@ -144,19 +123,14 @@
     grid-template-columns: minmax(0, 1fr) 5rem;
   }
 
-  .lines-table {
-    min-width: 0;
-  }
-
   .lines-table .col-cost,
   .lines-table .col-total,
   .lines-table .sku {
     display: none;
   }
 
-  .lines-table th,
-  .lines-table td {
-    padding-inline: var(--space-2);
+  .lines-table .col-product {
+    white-space: normal;
   }
 
   .lines-table .qty-input {

@@ -1,6 +1,16 @@
 import "./style.css";
 import { LiveView, redirect, session } from "@elements/app";
+import { Alert } from "@elements/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogFooter } from "@elements/ui/alert-dialog";
 import { Badge } from "@elements/ui/badge";
+import { Button } from "@elements/ui/button";
+import { Card, CardContent } from "@elements/ui/card";
+import { Empty } from "@elements/ui/empty";
+import { Field } from "@elements/ui/field";
+import { NativeSelect } from "@elements/ui/native-select";
+import { NumberInput } from "@elements/ui/number-input";
+import { Table, TableCell, TableHead } from "@elements/ui/table";
+import { toast } from "@elements/ui/toast";
 import favicon from "#app/shared/assets/favicons/favicon.svg";
 import { Layout } from "#app/shared/templates/layout";
 import { formatWhen } from "#app/shared/lib/format";
@@ -35,7 +45,6 @@ interface AddForm {
 
 interface LineState {
   quantity: number;
-  error: string;
 }
 
 const STEPS: PoStatus[] = ["draft", "sent", "partially_received", "received"];
@@ -59,10 +68,6 @@ function addable(products: LiveView<Product>, lines: LiveView<PoLine>, order: Pu
 }
 
 function onSend(action: Action, order: PurchaseOrder) {
-  if (!confirm(`Email ${poNumber(order.number)} to ${order.supplierEmail}?`)) {
-    return;
-  }
-
   action.busy = true;
   action.error = "";
 
@@ -76,10 +81,6 @@ function onSend(action: Action, order: PurchaseOrder) {
 }
 
 function onDelete(action: Action, order: PurchaseOrder) {
-  if (!confirm(`Delete draft ${poNumber(order.number)}?`)) {
-    return;
-  }
-
   action.busy = true;
   action.error = "";
 
@@ -126,32 +127,35 @@ function onAdd(form: AddForm, order: PurchaseOrder) {
 }
 
 function onSetQuantity(state: LineState, line: PoLine) {
-  state.error = "";
-
   try {
     setLineQuantity(line.id, state.quantity);
   } catch (err: any) {
-    state.error = err.message;
+    toast.error(err.message);
     state.quantity = line.quantityOrdered;
   }
 }
 
-function onRemove(state: LineState, line: PoLine) {
+function onRemove(line: PoLine) {
   try {
     removeLine(line.id);
   } catch (err: any) {
-    state.error = err.message;
+    toast.error(err.message);
   }
 }
 
 function onReceive(state: LineState, line: PoLine) {
-  state.error = "";
-
   try {
     receiveLine(line.id, state.quantity);
   } catch (err: any) {
-    state.error = err.message;
+    toast.error(err.message);
   }
+}
+
+function productOptions(products: LiveView<Product>, lines: LiveView<PoLine>, order: PurchaseOrder): { value: string; label: string }[] {
+  return addable(products, lines, order).map((p) => ({
+    value: p.id,
+    label: `${p.sku} · ${p.name} · ${p.onHand} on hand${isLow(p) ? " (low)" : ""}`,
+  }));
 }
 
 <html lang="en" class="page-purchase-order" (
@@ -167,9 +171,9 @@ function onReceive(state: LineState, line: PoLine) {
   </head>
   <body>
     <Layout active="orders">
-      <div e:if={orders.length === 0} class="callout">
+      <Alert e:if={orders.length === 0} variant="neutral" role="status">
         This purchase order was deleted. <a href="/purchase-orders">Back to purchase orders</a>
-      </div>
+      </Alert>
 
       <div e:for={order of orders} class="stack is-xl">
         <div class="stack is-sm">
@@ -181,29 +185,40 @@ function onReceive(state: LineState, line: PoLine) {
             </div>
 
             <div class="po-actions cluster">
-              <button e:if={order.status === "draft" && isManager()}
-                      class="is-ghost"
-                      disabled={action.busy}
-                      onclick={() => onDelete(action, order)}>
-                Delete draft
-              </button>
-              <button e:if={order.status === "draft" && isManager()}
-                      class="is-primary"
-                      disabled={action.busy || order.lineCount === 0}
-                      onclick={() => onSend(action, order)}>
-                Send to supplier
-              </button>
-              <button e:if={order.status === "sent" || order.status === "partially_received"}
-                      class="is-primary"
-                      disabled={action.busy}
+              <AlertDialog e:if={order.status === "draft" && isManager()}
+                           title={`Delete draft ${poNumber(order.number)}?`}
+                           description="The draft and its lines are removed. Nothing has been sent to the supplier.">
+                <Button slot="trigger" variant="ghost" disabled={action.busy}>Delete draft</Button>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep draft</AlertDialogCancel>
+                  <AlertDialogAction variant="danger" onclick={() => onDelete(action, order)}>Delete draft</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialog>
+              <AlertDialog e:if={order.status === "draft" && isManager()}
+                           title={`Email ${poNumber(order.number)} to ${order.supplierEmail}?`}
+                           description={`${order.supplierName} gets the order by email, and it can no longer be edited.`}>
+                <Button slot="trigger"
+                        variant="primary"
+                        loading={action.busy}
+                        disabled={order.lineCount === 0}>
+                  Send to supplier
+                </Button>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onclick={() => onSend(action, order)}>Send</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialog>
+              <Button e:if={order.status === "sent" || order.status === "partially_received"}
+                      variant="primary"
+                      loading={action.busy}
                       onclick={() => onReceiveAll(action, order)}>
                 Receive everything remaining
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
-        <p e:if={action.error} class="error" role="alert">{action.error}</p>
+        <Alert e:if={action.error} variant="danger" description={action.error} />
 
         <ol class="steps" aria-label="Progress">
           <li e:for={step of STEPS}
@@ -212,8 +227,8 @@ function onReceive(state: LineState, line: PoLine) {
           </li>
         </ol>
 
-        <div class="card">
-          <div class="card-body po-facts">
+        <Card>
+          <CardContent class="po-facts">
             <div>
               <div class="fact-label">Supplier</div>
               <div class="fact-value">{order.supplierName}</div>
@@ -234,64 +249,62 @@ function onReceive(state: LineState, line: PoLine) {
               <div class="fact-value">{order.unitsReceived} of {order.unitsOrdered} units</div>
               <div e:if={order.receivedAt} class="fact-sub">complete {formatWhen(order.receivedAt)}</div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div class="table-wrap">
-          <table class="data-table lines-table">
+        <Table label="Order lines" class="lines-table">
+          <table>
             <thead>
               <tr>
-                <th class="sku">SKU</th>
-                <th>Product</th>
-                <th class="num col-cost">Unit cost</th>
-                <th class="num">Ordered</th>
-                <th class="num">Received</th>
-                <th class="num col-total">Line total</th>
-                <th class="num">{order.status === "draft" ? "" : "Receive"}</th>
+                <TableHead class="sku">SKU</TableHead>
+                <TableHead class="col-product">Product</TableHead>
+                <TableHead align="end" class="col-cost">Unit cost</TableHead>
+                <TableHead align="end">Ordered</TableHead>
+                <TableHead align="end">Received</TableHead>
+                <TableHead align="end" class="col-total">Line total</TableHead>
+                <TableHead align="end">{order.status === "draft" ? "" : "Receive"}</TableHead>
               </tr>
             </thead>
             <tbody>
               <LineRow e:for={line of sortedLines(lines)} {line} {order} />
-              <tr e:if={lines.length === 0} class="empty-row">
-                <td colspan="7">No lines yet. Add a product below.</td>
+              <tr e:if={lines.length === 0}>
+                <TableCell colspan={7}>
+                  <Empty title="No lines yet" description="Add a product below." />
+                </TableCell>
               </tr>
             </tbody>
             <tfoot>
               <tr>
-                <td class="sku"></td>
-                <td>Total</td>
-                <td class="col-cost"></td>
-                <td class="num">{order.unitsOrdered}</td>
-                <td class="num">{order.unitsReceived}</td>
-                <td class="num col-total">{formatMoney(order.totalCents)}</td>
-                <td></td>
+                <TableCell class="sku"></TableCell>
+                <TableCell>Total</TableCell>
+                <TableCell class="col-cost"></TableCell>
+                <TableCell align="end">{order.unitsOrdered}</TableCell>
+                <TableCell align="end">{order.unitsReceived}</TableCell>
+                <TableCell align="end" class="col-total">{formatMoney(order.totalCents)}</TableCell>
+                <TableCell></TableCell>
               </tr>
             </tfoot>
           </table>
-        </div>
+        </Table>
 
-        <div e:if={order.status === "draft" && isManager()} class="card">
-          <div class="card-head"><h2>Add a product from {order.supplierName}</h2></div>
-          <div class="card-body stack is-sm">
+        <Card e:if={order.status === "draft" && isManager()} title={`Add a product from ${order.supplierName}`} level={2}>
+          <CardContent class="stack is-sm">
             <form class="add-line" onsubmit={() => onAdd(add, order)}>
-              <div class="field">
-                <label for="add-product">Product</label>
-                <select id="add-product" value={add.productId} onchange={() => onPickProduct(add, products)} required>
-                  <option value="">Choose a product…</option>
-                  <option e:for={p of addable(products, lines, order)} value={p.id}>
-                    {p.sku} · {p.name} · {p.onHand} on hand{isLow(p) ? " (low)" : ""}
-                  </option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="add-qty">Quantity</label>
-                <input id="add-qty" type="number" min="1" value={add.quantity}>
-              </div>
-              <button type="submit" disabled={!add.productId}>Add line</button>
+              <Field label="Product" required reserveError={false}>
+                <NativeSelect value={add.productId}
+                              block
+                              placeholder="Choose a product…"
+                              options={productOptions(products, lines, order)}
+                              onchange={() => onPickProduct(add, products)} />
+              </Field>
+              <Field label="Quantity" reserveError={false}>
+                <NumberInput value={add.quantity} min={1} buttons="none" />
+              </Field>
+              <Button type="submit" disabled={!add.productId}>Add line</Button>
             </form>
-            <p e:if={add.error} class="error" role="alert">{add.error}</p>
-          </div>
-        </div>
+            <Alert e:if={add.error} variant="danger" description={add.error} />
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   </body>
@@ -302,44 +315,45 @@ function onReceive(state: LineState, line: PoLine) {
   order: PurchaseOrder,
   private state: LineState = {
     quantity: order.status === "draft" ? line.quantityOrdered : line.quantityOrdered - line.quantityReceived,
-    error: "",
   },
 )>
   <tr class={["line-row", order.status !== "draft" && line.quantityReceived >= line.quantityOrdered && "is-complete"]}>
-    <td class="sku">{line.sku}</td>
-    <td><a class="row-link" href={`/products/${line.productId}`}>{line.name}</a></td>
-    <td class="num col-cost">{formatMoney(line.unitCostCents)}</td>
-    <td class="num">
-      <input e:if={order.status === "draft" && isManager()}
-             class="qty-input is-sm"
-             type="number"
-             min="1"
-             aria-label={`Quantity of ${line.name}`}
-             value={state.quantity}
-             onchange={() => onSetQuantity(state, line)}>
+    <TableCell class="sku">{line.sku}</TableCell>
+    <TableCell class="col-product"><a class="row-link" href={`/products/${line.productId}`}>{line.name}</a></TableCell>
+    <TableCell align="end" class="col-cost">{formatMoney(line.unitCostCents)}</TableCell>
+    <TableCell align="end">
+      <NumberInput e:if={order.status === "draft" && isManager()}
+                   class="qty-input"
+                   size="sm"
+                   buttons="none"
+                   min={1}
+                   value={state.quantity}
+                   attrs={{ "aria-label": `Quantity of ${line.name}` }}
+                   onValueCommit={() => onSetQuantity(state, line)} />
       <span e:else>{line.quantityOrdered}</span>
-    </td>
-    <td class="num">{line.quantityReceived}</td>
-    <td class="num col-total">{formatMoney(line.quantityOrdered * line.unitCostCents)}</td>
-    <td class="num">
-      <button e:if={order.status === "draft" && isManager()}
-              class="is-ghost is-sm"
-              onclick={() => onRemove(state, line)}>
+    </TableCell>
+    <TableCell align="end">{line.quantityReceived}</TableCell>
+    <TableCell align="end" class="col-total">{formatMoney(line.quantityOrdered * line.unitCostCents)}</TableCell>
+    <TableCell align="end">
+      <Button e:if={order.status === "draft" && isManager()}
+              variant="ghost"
+              size="sm"
+              onclick={() => onRemove(line)}>
         Remove
-      </button>
+      </Button>
       <span e:elseif={order.status !== "draft" && line.quantityReceived >= line.quantityOrdered} class="line-done">
         ✓ Received
       </span>
       <form e:elseif={order.status !== "draft"} class="receive-form row" onsubmit={() => onReceive(state, line)}>
-        <input class="qty-input is-sm"
-               type="number"
-               min="1"
-               max={line.quantityOrdered - line.quantityReceived}
-               aria-label={`Units of ${line.name} to receive`}
-               value={state.quantity}>
-        <button type="submit" class="is-sm">Receive</button>
+        <NumberInput class="qty-input"
+                     size="sm"
+                     buttons="none"
+                     min={1}
+                     max={line.quantityOrdered - line.quantityReceived}
+                     value={state.quantity}
+                     attrs={{ "aria-label": `Units of ${line.name} to receive` }} />
+        <Button type="submit" size="sm">Receive</Button>
       </form>
-      <p e:if={state.error} class="error line-error" role="alert">{state.error}</p>
-    </td>
+    </TableCell>
   </tr>
 </LineRow>
