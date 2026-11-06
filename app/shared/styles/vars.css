@@ -27,6 +27,8 @@
       --accent-soft: var(--brand-900);
       --accent-ink: var(--brand-950);
       --accent-edge: var(--brand-700);
+      --link: var(--accent);
+      --focus: var(--accent);
     }
   }
 
@@ -36,6 +38,8 @@
     --accent-soft: var(--brand-900);
     --accent-ink: var(--brand-950);
     --accent-edge: var(--brand-700);
+    --link: var(--accent);
+    --focus: var(--accent);
   }
 
   /* Phones: small controls keep a 40px tap target. */
