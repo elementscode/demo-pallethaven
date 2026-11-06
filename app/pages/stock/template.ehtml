@@ -155,7 +155,7 @@ function hiddenColumns(width: Width): string[] {
 
 /** Phones: fixed widths so all four columns fit, the product name wrapping. */
 function columnSizes(width: Width): Record<string, number> {
-  return width === "phone" ? { name: 124, onHand: 66, reorderPoint: 80, status: 88 } : {};
+  return width === "phone" ? { name: 98, onHand: 80, reorderPoint: 93, status: 87 } : {};
 }
 
 function rowTone(row: Product): string {
