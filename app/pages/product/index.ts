@@ -10,7 +10,7 @@ export default function route(req: Request, res: Response) {
 
   let id = req.params.id;
 
-  sql(`select 1 from products where id::text = ${id}`).firstOrThrow("No such product.");
+  let { onHand } = sql<{ onHand: number }>(`select onHand from products where id::text = ${id}`).firstOrThrow("No such product.");
 
   let suppliers = sql<SupplierOption>(`select id, name from suppliers order by name`).all();
 
@@ -29,5 +29,6 @@ export default function route(req: Request, res: Response) {
     movements: stockMovements.view({ productId: id }, { orderBy: "createdAt desc", limit: 25 }),
     suppliers,
     onOrder,
+    onHand,
   });
 }

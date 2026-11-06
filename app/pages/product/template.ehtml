@@ -142,7 +142,8 @@ function markPercent(p: Product): number {
   movements: LiveView<StockMovement>,
   suppliers: SupplierOption[],
   onOrder: OnOrder[],
-  private form: AdjustForm = emptyAdjust(products.at(0)?.onHand ?? 0),
+  onHand: number,
+  private form: AdjustForm = emptyAdjust(onHand),
   private edit: EditForm = { open: false, name: "", supplierId: "", cost: "", reorderPoint: 0, error: "" },
 )>
   <head>
