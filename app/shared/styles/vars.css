@@ -16,9 +16,6 @@
     --accent-soft: var(--brand-50);
     --accent-ink: var(--brand-50);
     --accent-edge: var(--brand-200);
-    --item-selected: var(--brand-200);
-    --link-c: 0.123;
-    --link-h: 48;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -28,9 +25,6 @@
       --accent-soft: var(--brand-900);
       --accent-ink: var(--brand-950);
       --accent-edge: var(--brand-700);
-      --link: var(--accent);
-      --focus: var(--accent);
-      --item-selected: var(--accent-soft);
     }
   }
 
@@ -40,9 +34,6 @@
     --accent-soft: var(--brand-900);
     --accent-ink: var(--brand-950);
     --accent-edge: var(--brand-700);
-    --link: var(--accent);
-    --focus: var(--accent);
-    --item-selected: var(--accent-soft);
   }
 
   /* Phones: small controls keep a 40px tap target. */
